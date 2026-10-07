@@ -1,0 +1,11 @@
+# ambiente
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# dados baixados ou gerados (são reproduzíveis pelos scripts)
+dados/
+*.parquet
+*.duckdb
+*.zip
