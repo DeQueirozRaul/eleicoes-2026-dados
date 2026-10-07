@@ -147,6 +147,91 @@ A previsão por UF e por município fica em `dados/modelo/` (gerada pelo script)
 - Seis eleições é pouco: os parâmetros nacionais têm muita incerteza, e ela
   está refletida nos intervalos.
 
+## Cenários: para onde vão os eleitores dos eliminados
+
+Código: [`eleicoes/transferencia.py`](../eleicoes/transferencia.py) e
+[`scripts/cenarios_transferencia.py`](../scripts/cenarios_transferencia.py).
+
+### De onde vieram
+
+Não existe o voto de cada pessoa, só os totais por município. Mas, cruzando os
+5.570 municípios, dá para estimar que parte dos eleitores de cada candidato de
+2026 votou em cada lado no 2º turno de 2022 (inferência ecológica, estimada por
+região). Os eleitores dos eliminados em 2026 vieram de:
+
+| Candidato eliminado | Votou JAIR BOLSONARO em 2022 | Votou LULA em 2022 | Não votou válido em 2022 |
+|---|---|---|---|
+| ESCRITOR AUGUSTO CURY | 51% | 45% | 4% |
+| RENAN SANTOS | 50% | 29% | 21% |
+| RONALDO CAIADO | 32% | 44% | 24% |
+| Demais | 27% | 45% | 28% |
+| **Total dos eliminados** | **44%** | **40%** | **16%** |
+
+A estimativa de cada candidato muda bastante conforme se agrupam os municípios
+(estimando para o Brasil todo ou por UF, a origem "JAIR BOLSONARO" dos eleitores
+de RONALDO CAIADO vai de 32% a 62%), então ela não deve ser lida isoladamente.
+O total dos eliminados é estável: 44% a 47% do lado JAIR BOLSONARO, 31% a 40% do
+lado LULA e 16% a 22% sem lado, nas três formas de agrupar.
+
+### Cenários
+
+"Fidelidade" é a parte dos eleitores dos eliminados que vota no finalista do
+lado em que votou em 2022 (FLAVIO BOLSONARO para quem votou em JAIR BOLSONARO;
+LULA para quem votou em LULA). "Troca" é a parte que vota no outro finalista. O
+resto vota branco, nulo ou não vai. Nunca 100% vai para um lado só.
+
+% de FLAVIO BOLSONARO nos votos válidos (LULA = 100% menos o valor):
+
+| Fidelidade | Troca 5% | Troca 10% | Troca 20% | Troca 30% |
+|---|---|---|---|---|
+| 50% | 51,04% | 51,03% | 51,01% | 50,99% |
+| 60% | 51,05% | 51,04% | 51,02% | 51,00% |
+| 70% | 51,06% | 51,05% | 51,03% | 51,01% |
+| 80% | 51,07% | 51,06% | 51,04% | |
+| 90% | 51,08% | 51,07% | | |
+
+Considerando também as outras formas de agrupar os municípios, todos os
+cenários ficam entre **51,0% e 51,5%** para FLAVIO BOLSONARO (48,5% a 49,0% para
+LULA), praticamente o placar do 1º turno entre os dois (51,0% × 49,0%).
+
+**Leitura:** como os eleitores dos eliminados vieram em proporções parecidas
+dos dois lados de 2022, a transferência deles quase não mexe no placar. O 2º
+turno de 2026 deve ser decidido menos pelos eliminados e mais por quem volta
+ou deixa de ir votar e por quem troca de finalista. O modelo principal capta
+isso só pelo padrão histórico das mudanças entre turnos, e é daí que vem a
+diferença entre os ~51% dos cenários e os 50% do modelo.
+
+Para comparar: em 2022 os eleitores dos eliminados vinham principalmente do
+lado JAIR BOLSONARO de 2018 (6,8 milhões, contra 1,4 milhão do lado do PT), e
+os cenários iam de 50,7% a 52,2% para LULA. O resultado real (50,9%) ficou no
+cenário de fidelidade alta.
+
+### Por que isso não virou a previsão principal
+
+Testamos o método como previsão: ajustamos os parâmetros (fidelidade, troca,
+quem não tinha lado, volta de quem não votou no 1º turno e desistência dos
+eleitores dos finalistas) em cada eleição de 2006 a 2022 e previmos cada uma
+com a média das outras.
+
+| Ano | Real | Previsto com as outras eleições | Erro | Ajustado na própria eleição |
+|---|---|---|---|---|
+| 2006 | 60,8% | 54,9% | −5,9 | 58,0% |
+| 2010 | 56,1% | 60,6% | +4,5 | 57,1% |
+| 2014 | 51,7% | 55,0% | +3,4 | 54,3% |
+| 2018 | 55,1% | 57,6% | +2,5 | 56,4% |
+| 2022 | 50,9% | 51,6% | +0,7 | 51,2% |
+
+O erro médio (3,4 pontos) foi maior que o do modelo principal nas mesmas
+eleições (2,7). Nem ajustado na própria eleição o método reproduz bem 2010 e
+2014. Por isso ele fica como ferramenta de cenários, não como previsão.
+
+### O que pode dar mais precisão
+
+- **Apuração ao vivo (Parte 2):** é onde a incerteza cai de verdade, porque o
+  modelo passa a ver votos reais do 2º turno.
+- **Pesquisas:** são a única fonte, antes da eleição, sobre quem troca de lado
+  ou deixa de votar. Podem entrar numa versão futura, se melhorarem a validação.
+
 ## Parte 2: ao vivo, durante a apuração
 
 O placar parcial engana porque as urnas não chegam em ordem aleatória: cada

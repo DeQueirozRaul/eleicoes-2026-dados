@@ -75,6 +75,9 @@ python scripts/montar_base.py
 # 4. valida o modelo nas eleições passadas e gera a previsão do 2º turno de 2026
 python scripts/prever_2t.py
 
+# 5. de onde vieram os eleitores dos eliminados e cenários de transferência
+python scripts/cenarios_transferencia.py
+
 # na noite do 2º turno: uma varredura por minuto até o fim da apuração
 python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
 
@@ -90,6 +93,7 @@ O banco `dados/eleicoes.duckdb` tem as tabelas:
 | `municipios` | cadastro com códigos TSE e IBGE e região |
 | `finalistas` | os dois primeiros colocados de cada eleição |
 | `transicao_turnos` | base do modelo: 1º e 2º turno lado a lado, por município |
+| `composicao_eleitorado` | eleitorado de cada município por opção (candidato, branco/nulo, abstenção) |
 
 ```sql
 -- % de cada candidato no 1º turno de 2026, por região
@@ -110,6 +114,8 @@ order by m.regiao, pct desc;
       e checagens de qualidade
 - [x] Modelo de previsão do 2º turno, validado nas eleições de 2002 a 2022
       ([metodologia e resultados](docs/previsao.md))
+- [x] Cenários de transferência dos votos dos eliminados, com a origem dos
+      eleitores estimada por inferência ecológica ([resultados](docs/previsao.md#cenários-para-onde-vão-os-eleitores-dos-eliminados))
 - [ ] Previsão ao vivo durante a apuração, testada reproduzindo a apuração de 2022
 - [ ] Análises: resultados, perfil dos candidatos, patrimônio, eleitorado,
       dinheiro de campanha
