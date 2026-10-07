@@ -1,5 +1,6 @@
-"""Reproduz a apuração do 2º turno de 2022 seção por seção e confere com o
-histórico oficial de totalização do TSE.
+"""Monta a tabela secoes_2022 (os dois turnos que já tiverem sido baixados) e
+confere a apuração do 2º turno reproduzida seção por seção com o histórico
+oficial de totalização do TSE.
 
 Cada seção entra na contagem no momento em que o boletim de urna chegou ao TSE
 (DT_BU_RECEBIDO). Se a curva reproduzida bater com o histórico oficial, essa

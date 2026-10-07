@@ -5,9 +5,10 @@ A cada atualização, o modelo:
 
 1. compara, em cada município com votos já apurados, o resultado parcial com a
    previsão feita antes da eleição (o "resíduo", na escala logit);
-2. estima o quanto a previsão está errando no país e em cada UF (modelo
-   normal hierárquico: resíduo = erro nacional + erro da UF + erro do município),
-   o que permite corrigir também os municípios que ainda não apuraram nada;
+2. estima o quanto a previsão está errando no país, em cada UF e conforme o
+   tamanho do município (modelo normal hierárquico: resíduo = erro nacional +
+   inclinação × log(eleitores) + erro da UF + erro do município), o que permite
+   corrigir também os municípios que ainda não apuraram nada;
 3. projeta os votos que faltam em cada município e soma ao que já foi apurado,
    admitindo que o que falta pode ser sistematicamente diferente do que chegou;
 4. repete com milhares de sorteios dos erros para obter intervalo e probabilidade.
@@ -40,6 +41,10 @@ class Parametros:
     sigma_mun: float = 0.138      # variação do erro entre municípios
     c_tamanho: float = 11.3       # ruído extra de municípios pequenos (÷ votos válidos)
     sigma_parcial: float = 0.20   # o que já foi apurado num município difere do que falta
+    # O erro pode depender do tamanho do município (cidades grandes apuram por
+    # último e às vezes votam diferente do previsto). Faixa larga a priori: o
+    # modelo aprende a inclinação durante a apuração.
+    sigma_tamanho: float = 0.20   # por unidade de log(eleitores)
     # O que ainda falta apurar pode diferir de forma sistemática do que já chegou
     # (regiões e seções que apuram mais tarde votam diferente). Esse erro não
     # diminui com mais dados apurados, só com menos votos faltando.
@@ -61,25 +66,17 @@ class Projecao:
         return self.pct_secoes >= MINIMO_APURADO
 
 
-def _posterior_erros(r, w_var, uf_idx, n_uf, p: Parametros):
-    """Média e covariância a posteriori de (erro nacional, erros das UFs)
-    no modelo r_i = mu + u_uf + e_i, e_i ~ N(0, w_var_i)."""
-    k = 1 + n_uf
-    precisao = np.zeros((k, k))
-    precisao[0, 0] = 1 / p.tau_nacional ** 2
-    precisao[np.arange(1, k), np.arange(1, k)] = 1 / p.sigma_uf ** 2
-    vetor = np.zeros(k)
+def _posterior_erros(r, w_var, X, precisao_prior):
+    """Média e covariância a posteriori dos efeitos no modelo r = X·efeitos + e,
+    e ~ N(0, w_var), com prior normal de média zero e precisão `precisao_prior`."""
+    precisao = np.diag(precisao_prior).astype(float)
+    vetor = np.zeros(len(precisao_prior))
     if len(r):
         inv = 1 / w_var
-        precisao[0, 0] += inv.sum()
-        por_uf = np.bincount(uf_idx, weights=inv, minlength=n_uf)
-        precisao[0, 1:] += por_uf
-        precisao[1:, 0] += por_uf
-        precisao[np.arange(1, k), np.arange(1, k)] += por_uf
-        vetor[0] = (inv * r).sum()
-        vetor[1:] = np.bincount(uf_idx, weights=inv * r, minlength=n_uf)
+        precisao += X.T @ (X * inv[:, None])
+        vetor = X.T @ (inv * r)
     cov = np.linalg.inv(precisao)
-    return cov @ vetor, cov
+    return cov @ vetor, (cov + cov.T) / 2
 
 
 def projetar(estado: pd.DataFrame, p: Parametros = Parametros(), cenarios: int = 2000,
@@ -96,14 +93,21 @@ def projetar(estado: pd.DataFrame, p: Parametros = Parametros(), cenarios: int =
     prior = estado["logit_prior"].to_numpy(float)
     fracao = np.divide(aptos_ap, aptos, out=np.ones_like(aptos), where=aptos > 0)
 
+    # efeitos: [erro nacional, inclinação por tamanho, erro de cada UF]
+    tamanho = np.log(np.maximum(aptos, 1))
+    tamanho = tamanho - np.average(tamanho, weights=np.maximum(aptos, 1))
+    X = np.column_stack([np.ones(len(estado)), tamanho, np.eye(n_uf)[uf_idx]])
+    precisao_prior = np.concatenate([[1 / p.tau_nacional ** 2, 1 / p.sigma_tamanho ** 2],
+                                     np.full(n_uf, 1 / p.sigma_uf ** 2)])
+
     # 1. resíduos dos municípios com votos apurados
     tem = validos > 0
     r = logit((a[tem] + 0.5) / (validos[tem] + 1)) - prior[tem]
     var_mun = p.sigma_mun ** 2 + p.c_tamanho / np.maximum(validos[tem], 1)
     var_obs = var_mun + p.sigma_parcial ** 2 * (1 - fracao[tem])
 
-    # 2. erro nacional e por UF
-    media, cov = _posterior_erros(r, var_obs, uf_idx[tem], n_uf, p)
+    # 2. erro nacional, por tamanho e por UF
+    media, cov = _posterior_erros(r, var_obs, X[tem], precisao_prior)
 
     # 3. votos que faltam em cada município
     taxa_obs = np.divide(validos, aptos_ap, out=np.zeros_like(validos), where=aptos_ap > 0)
@@ -111,8 +115,8 @@ def projetar(estado: pd.DataFrame, p: Parametros = Parametros(), cenarios: int =
     restante = (aptos - aptos_ap) * taxa
 
     # 4. sorteios
-    erros = rng.multivariate_normal(media, cov, size=cenarios)          # cenários x (1 + UFs)
-    base = prior[None, :] + erros[:, [0]] + erros[:, 1:][:, uf_idx]
+    erros = rng.multivariate_normal(media, cov, size=cenarios)          # cenários x efeitos
+    base = prior[None, :] + erros @ X.T
     # erro próprio do município: o que já apurou informa sobre o que falta
     var_e = p.sigma_mun ** 2 + p.c_tamanho / np.maximum(aptos * taxa, 1)
     rho = np.zeros(len(estado))

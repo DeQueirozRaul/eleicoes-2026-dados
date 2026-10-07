@@ -63,8 +63,8 @@ def grafico(turno: int) -> Path | None:
 
     # rótulos diretos
     fim = r.iloc[-1]
-    ax.annotate("Resultado final " + pct(final), (r["momento"].iloc[-1], final), xytext=(-110, 6),
-                textcoords="offset points", color=TINTA_2, fontsize=10)
+    ax.annotate("Resultado\nfinal " + pct(final), (r["momento"].iloc[-1], final), xytext=(10, 0),
+                textcoords="offset points", color=TINTA_2, fontsize=10, va="center", annotation_clip=False)
     meio = r.iloc[len(r) // 3]
     meio_proj = proj.iloc[len(proj) // 3]
     ax.annotate("Placar oficial", (meio["momento"], meio["pct_a_apurado"]), xytext=(0, -16),
@@ -74,7 +74,8 @@ def grafico(turno: int) -> Path | None:
 
     # quando a liderança muda no placar e na projeção
     lado_final = final > 0.5
-    virada_placar = r[(r["pct_a_apurado"] > 0.5) == lado_final]
+    do_lado_final = ((r["pct_a_apurado"] > 0.5) == lado_final)[::-1].cummin()[::-1]  # daí em diante não muda mais
+    virada_placar = r[do_lado_final]
     if len(virada_placar) and len(virada_placar) < len(r):
         v = virada_placar.iloc[0]
         ax.scatter([v["momento"]], [v["pct_a_apurado"]], s=40, color=PLACAR, edgecolor=SUPERFICIE, lw=2, zorder=6)
@@ -100,7 +101,7 @@ def grafico(turno: int) -> Path | None:
     fig.text(0.06, 0.018, "Fonte: TSE (boletins de urna e histórico de totalização). Apuração reproduzida seção por seção,\n"
              "na hora em que cada boletim chegou ao TSE. Projeção: modelo deste projeto (github.com/DeQueirozRaul/eleicoes-2026-dados).",
              fontsize=8.5, color=MUDO, linespacing=1.4)
-    fig.subplots_adjust(left=0.06, right=0.97, top=0.86, bottom=0.13)
+    fig.subplots_adjust(left=0.06, right=0.9, top=0.86, bottom=0.13)
 
     destino = RAIZ / "docs" / "img" / f"apuracao_2022_{turno}t.png"
     destino.parent.mkdir(parents=True, exist_ok=True)

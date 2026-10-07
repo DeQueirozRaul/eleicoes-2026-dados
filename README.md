@@ -5,6 +5,13 @@ históricas, um olhar para o Brasil inteiro e um recorte específico do
 **Distrito Federal**. Tudo é feito a partir de dados oficiais e abertos (TSE e
 IBGE), com código aberto e reprodutível.
 
+![Placar oficial e projeção ao vivo na noite do 2º turno de 2022](docs/img/apuracao_2022_2t.png)
+
+*Teste da previsão ao vivo reproduzindo a apuração do 2º turno de 2022 seção por
+seção: a projeção ficou do lado do vencedor desde 5% apurado, mais de uma hora
+antes de o placar oficial virar (o mesmo aconteceu no 1º turno).
+[Como funciona](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração).*
+
 ## ⚖️ Compromisso de neutralidade
 
 Este é um projeto **apartidário**. Ele não apoia, critica nem faz campanha
@@ -78,8 +85,15 @@ python scripts/prever_2t.py
 # 5. de onde vieram os eleitores dos eliminados e cenários de transferência
 python scripts/cenarios_transferencia.py
 
-# na noite do 2º turno: uma varredura por minuto até o fim da apuração
+# 6. teste da previsão ao vivo reproduzindo as apurações de 2022
+python scripts/baixar_boletins_2022.py --turno 2    # e --turno 1 (~1,2 GB de download)
+python scripts/reproduzir_apuracao_2022.py
+python scripts/testar_ao_vivo_2022.py --turno 2     # e --turno 1
+python scripts/grafico_apuracao_2022.py
+
+# na noite do 2º turno (25/10), em dois terminais:
 python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
+python scripts/previsao_ao_vivo.py --eleicao 6258 --intervalo 60
 
 pytest
 ```
@@ -94,6 +108,7 @@ O banco `dados/eleicoes.duckdb` tem as tabelas:
 | `finalistas` | os dois primeiros colocados de cada eleição |
 | `transicao_turnos` | base do modelo: 1º e 2º turno lado a lado, por município |
 | `composicao_eleitorado` | eleitorado de cada município por opção (candidato, branco/nulo, abstenção) |
+| `secoes_2022` | 2022, por seção: votos dos finalistas e hora em que o boletim chegou ao TSE |
 
 ```sql
 -- % de cada candidato no 1º turno de 2026, por região
@@ -116,7 +131,8 @@ order by m.regiao, pct desc;
       ([metodologia e resultados](docs/previsao.md))
 - [x] Cenários de transferência dos votos dos eliminados, com a origem dos
       eleitores estimada por inferência ecológica ([resultados](docs/previsao.md#cenários-para-onde-vão-os-eleitores-dos-eliminados))
-- [ ] Previsão ao vivo durante a apuração, testada reproduzindo a apuração de 2022
+- [x] Previsão ao vivo durante a apuração, testada reproduzindo as duas
+      apurações de 2022 seção por seção ([resultados](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração))
 - [ ] Análises: resultados, perfil dos candidatos, patrimônio, eleitorado,
       dinheiro de campanha
 - [ ] Recorte do Distrito Federal

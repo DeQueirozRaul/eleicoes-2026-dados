@@ -14,8 +14,10 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
+import time
 import tempfile
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import duckdb
@@ -39,13 +41,41 @@ def urls(turno: int) -> dict[str, str]:
     return saida
 
 
-def baixar_uf(url: str, destino: Path, sessao: requests.Session) -> None:
+def baixar_em_partes(url: str, destino: Path, partes: int = 3, bloco: int = 32 * 1024 * 1024) -> None:
+    """Baixa o arquivo em pedaços paralelos (HTTP Range), mais rápido para os zips
+    grandes. Se o servidor recusar os pedidos paralelos, baixa de uma vez só."""
+    tamanho = int(requests.head(url, timeout=60).headers["Content-Length"])
+    with open(destino, "wb") as f:
+        f.truncate(tamanho)
+
+    def pedaco(inicio: int) -> None:
+        fim = min(inicio + bloco, tamanho) - 1
+        for tentativa in range(4):
+            try:
+                r = requests.get(url, headers={"Range": f"bytes={inicio}-{fim}"}, timeout=300)
+                r.raise_for_status()
+                with open(destino, "r+b") as f:
+                    f.seek(inicio)
+                    f.write(r.content)
+                return
+            except requests.RequestException:
+                if tentativa == 3:
+                    raise
+                time.sleep(2 ** (tentativa + 1))
+
+    try:
+        with ThreadPoolExecutor(max_workers=partes) as executor:
+            list(executor.map(pedaco, range(0, tamanho, bloco)))
+    except requests.RequestException:
+        with requests.get(url, stream=True, timeout=600) as resposta, open(destino, "wb") as f:
+            resposta.raise_for_status()
+            shutil.copyfileobj(resposta.raw, f, length=4 * 1024 * 1024)
+
+
+def baixar_uf(url: str, destino: Path) -> None:
     with tempfile.TemporaryDirectory() as tmp:
         zip_tmp = Path(tmp) / "bu.zip"
-        with sessao.get(url, stream=True, timeout=600) as resposta:
-            resposta.raise_for_status()
-            with open(zip_tmp, "wb") as f:
-                shutil.copyfileobj(resposta.raw, f, length=4 * 1024 * 1024)
+        baixar_em_partes(url, zip_tmp)
         with zipfile.ZipFile(zip_tmp) as zf:
             membro = next(n for n in zf.namelist() if n.lower().endswith(".csv"))
             csv_tmp = Path(zf.extract(membro, tmp))
@@ -67,12 +97,11 @@ def main() -> None:
 
     pasta = RAIZ / "dados" / "brutos" / f"bweb_2022_{args.turno}t"
     pasta.mkdir(parents=True, exist_ok=True)
-    sessao = requests.Session()
     for uf, url in sorted(urls(args.turno).items()):
         destino = pasta / f"{uf}.parquet"
         if destino.exists():
             continue
-        baixar_uf(url, destino, sessao)
+        baixar_uf(url, destino)
         print(f"{uf}: {destino.stat().st_size / 1e6:.1f} MB", flush=True)
 
 

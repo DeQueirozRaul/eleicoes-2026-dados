@@ -264,18 +264,93 @@ ainda falta chegar:
    porcentagem final projetada com intervalo e a probabilidade de cada
    finalista, atualizadas a cada minuto.
 
-### Teste reproduzindo a apuração de 2022
+### Teste reproduzindo as apurações de 2022
+
+Código: [`eleicoes/ao_vivo.py`](../eleicoes/ao_vivo.py) e
+[`scripts/testar_ao_vivo_2022.py`](../scripts/testar_ao_vivo_2022.py).
 
 Os boletins de urna de 2022 trazem, para cada seção, os votos e a hora em que
-o boletim chegou ao TSE (`DT_BU_RECEBIDO`). Com isso dá para reproduzir a
-noite do 2º turno de 2022 minuto a minuto:
+o boletim chegou ao TSE (`DT_BU_RECEBIDO`). Reproduzindo a apuração nessa
+ordem, a curva bate com o histórico oficial de totalização do 2º turno:
+diferença média de 0,4 ponto no % de seções apuradas e de 0,07 ponto no % de
+LULA. Então dá para rodar a previsão ao vivo "como se fosse aquela noite", a
+cada 2 minutos, nos dois turnos.
 
-- conferir que a curva reproduzida bate com o histórico oficial de totalização;
-- rodar o modelo ao vivo como se fosse aquela noite;
-- medir com quantos % das seções apuradas a projeção ficou a menos de 0,5 ponto
-  do resultado final, e se o intervalo de incerteza conteve o resultado real.
+**2º turno de 2022.** A previsão de antes da eleição vem do modelo da Parte 1
+treinado só com 2002 a 2018, sem saber nada de 2022 além do 1º turno.
 
-Só publicamos a previsão ao vivo de 2026 se ela passar nesse teste.
+![Placar oficial e projeção ao vivo na noite do 2º turno de 2022](img/apuracao_2022_2t.png)
+
+**1º turno de 2022.** Aqui o alvo é o placar entre LULA e JAIR BOLSONARO. A
+previsão de antes é só o mapa do 2º turno de 2018 (lado do PT × outro lado),
+com incerteza nacional grande, porque esse mapa não diz nada sobre o nível de
+2022. É um teste mais difícil: o modelo tem de aprender quase tudo durante a
+noite.
+
+![Placar oficial e projeção ao vivo na noite do 1º turno de 2022](img/apuracao_2022_1t.png)
+
+Erro em relação ao resultado final (pontos percentuais):
+
+| Apurado | 2º turno: placar oficial | 2º turno: projeção | 1º turno: placar oficial | 1º turno: projeção |
+|---|---|---|---|---|
+| 5% | −4,6 | +0,5 | −6,5 | −0,8 |
+| 10% | −2,9 | −0,5 | −5,8 | −0,7 |
+| 25% | −2,1 | −0,7 | −5,2 | −0,8 |
+| 50% | −1,2 | −0,6 | −3,8 | −0,4 |
+| 75% | −0,7 | −0,2 | −2,3 | −0,1 |
+
+- **Lado certo desde o início:** depois de 5% apurado, a projeção mostrou LULA à
+  frente o tempo todo nos dois turnos. O placar oficial só virou às 18h44 no
+  2º turno (68% apurado) e às 20h00 no 1º (67%).
+- **Intervalo honesto:** o resultado final ficou dentro do intervalo de 90% em
+  93% dos momentos no 2º turno e em 100% no 1º. A largura média do intervalo
+  foi de ~3 pontos com 5–10% apurado, ~2 pontos com 25–50% e ~1,2 ponto com
+  50–75%.
+- **Chance acima de 90%:** de forma estável, a partir de 18h40 no 2º turno (64%
+  apurado), uma disputa decidida por 1,8 ponto, e desde a primeira publicação
+  (5,5% apurado) no 1º turno, decidido por 5,7 pontos.
+- **Sobra um viés pequeno:** a projeção ficou de 0,5 a 0,8 ponto abaixo do final
+  durante boa parte das duas noites. As seções que chegam primeiro votaram um
+  pouco mais em JAIR BOLSONARO do que as últimas, mesmo descontados UF e
+  tamanho. O intervalo cobre isso.
+
+### O que mudou no modelo por causa desses testes
+
+1. **O que falta apurar pode ser diferente do que já chegou.** A primeira
+   versão supunha que não, e no 2º turno o intervalo continha o final em só 8%
+   dos momentos. Entrou um desvio comum aos votos que faltam (0,04 no país e
+   0,05 por UF, na escala logit), com tamanho escolhido pela diferença entre a
+   primeira e a segunda metade das seções nas capitais.
+2. **Só publicar a partir de 5% apurado.** Antes disso os primeiros boletins vêm
+   de poucas regiões e a projeção oscila (chegou a 54% com 1% apurado no 2º
+   turno).
+3. **O erro pode depender do tamanho do município.** Com os ajustes 1 e 2, o
+   teste no 1º turno ainda falhou: viés de 2 pontos por horas e intervalo
+   contendo o final em só 5% dos momentos. A causa: em relação ao mapa de 2018,
+   LULA foi muito melhor nas cidades grandes do que nas pequenas (diferença de
+   cerca de 0,3 na escala logit), e as pequenas apuram primeiro. Entrou uma
+   inclinação por log(eleitores), com faixa larga a priori (0,2), que o modelo
+   aprende durante a noite. No 2º turno ela quase não mudou nada.
+
+**Ressalva:** o ajuste 3 foi feito depois de ver o resultado do 1º turno. Então
+os dois testes de 2022 já ajudaram a desenhar o modelo, e o teste realmente
+independente será a noite de 25/10/2026. Os parâmetros não foram ajustados
+para acertar nenhum dos dois testes: o 1 e o 3 vieram dos diagnósticos e o 2 é
+uma regra simples.
+
+## Na noite de 25/10
+
+```bash
+# terminal 1: coleta a cada minuto
+python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
+# terminal 2: projeção a cada minuto (aparece a partir de 5% apurado)
+python scripts/previsao_ao_vivo.py --eleicao 6258 --intervalo 60
+```
+
+Em 07/10 os arquivos do 2º turno (eleição 6258) ainda não estavam publicados
+no site de resultados do TSE; o coletor espera e avisa "nenhum dado publicado
+ainda". Vale rodar de novo na semana da eleição para confirmar que os caminhos
+não mudaram.
 
 ## O que será publicado
 
