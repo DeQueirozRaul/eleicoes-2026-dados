@@ -48,8 +48,9 @@ Códigos das eleições de 2026 nos arquivos ao vivo:
 ## Estrutura
 
 ```
-eleicoes/          código reutilizável (leitura e limpeza dos dados)
+eleicoes/          código reutilizável (leitura dos dados do TSE e modelo de 2º turno)
 scripts/           coletas e rotinas executáveis
+sql/               transformações em SQL (DuckDB) e checagens de qualidade (sql/checagens)
 tests/             testes automatizados (com arquivos reais do TSE em tests/fixtures)
 docs/              metodologia
 dados/             dados baixados e gerados (fora do git; recriados pelos scripts)
@@ -62,8 +63,17 @@ python -m venv .venv
 source .venv/bin/activate          # no Windows: .venv\Scripts\activate
 pip install -r requirements-dev.txt
 
-# baixa o resultado do 1º turno de 2026 para Presidente, município a município
+# 1. resultado do 1º turno de 2026 para Presidente, município a município (~2 min)
 python scripts/coletar_ao_vivo.py --eleicao 6257 --cargo 1
+
+# 2. resultados presidenciais de 2002 a 2022 (só os arquivos nacionais, ~15 s)
+python scripts/baixar_historico.py
+
+# 3. monta o banco dados/eleicoes.duckdb e roda as checagens de qualidade
+python scripts/montar_base.py
+
+# 4. valida o modelo nas eleições passadas e gera a previsão do 2º turno de 2026
+python scripts/prever_2t.py
 
 # na noite do 2º turno: uma varredura por minuto até o fim da apuração
 python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
@@ -71,23 +81,35 @@ python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
 pytest
 ```
 
-Os dados ficam em `dados/ao_vivo/` em Parquet e podem ser consultados direto com
-DuckDB:
+O banco `dados/eleicoes.duckdb` tem as tabelas:
+
+| Tabela | Conteúdo |
+|---|---|
+| `votos_presidente` | votos por eleição, turno, município e candidato (2002 a 2026) |
+| `comparecimento_presidente` | aptos, comparecimento, abstenção, brancos, nulos e válidos |
+| `municipios` | cadastro com códigos TSE e IBGE e região |
+| `finalistas` | os dois primeiros colocados de cada eleição |
+| `transicao_turnos` | base do modelo: 1º e 2º turno lado a lado, por município |
 
 ```sql
-select nm_urna, sum(qt_votos) as votos
-from 'dados/ao_vivo/e6257_c1/*/candidatos.parquet'
-where cd_municipio_tse <> ''
-group by nm_urna
-order by nm_urna;
+-- % de cada candidato no 1º turno de 2026, por região
+select m.regiao, v.nm_urna,
+       round(100 * sum(v.qt_votos) / sum(sum(v.qt_votos)) over (partition by m.regiao), 2) as pct
+from votos_presidente v
+join municipios m using (uf, cd_municipio_tse)
+where v.ano = 2026 and v.turno = 1
+group by m.regiao, v.nm_urna
+order by m.regiao, pct desc;
 ```
 
 ## Roteiro
 
 - [x] Coletor dos resultados ao vivo, testado com o 1º turno de 2026 (a soma dos
       5.757 municípios e cidades do exterior bate com o total nacional)
-- [ ] Base histórica (2014, 2018, 2022 e 2026) em DuckDB, com códigos TSE ↔ IBGE
-- [ ] Modelo de previsão do 2º turno ([metodologia](docs/previsao.md))
+- [x] Base histórica de Presidente (2002 a 2026) em DuckDB, com códigos TSE ↔ IBGE
+      e checagens de qualidade
+- [x] Modelo de previsão do 2º turno, validado nas eleições de 2002 a 2022
+      ([metodologia e resultados](docs/previsao.md))
 - [ ] Previsão ao vivo durante a apuração, testada reproduzindo a apuração de 2022
 - [ ] Análises: resultados, perfil dos candidatos, patrimônio, eleitorado,
       dinheiro de campanha
