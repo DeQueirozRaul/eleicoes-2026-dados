@@ -55,12 +55,13 @@ def sigla(texto: str) -> str:
 # 1 e 2: disputas apertadas
 # ---------------------------------------------------------------------------
 
-def resultado(votos: dict[int, float], turno: int) -> str:
+def resultado(votos: dict[int, float], turno: int, nomes: dict[int, str]) -> str:
     ordem = sorted(votos, key=votos.get, reverse=True)
     total = sum(votos.values())
     if turno == 2 or votos[ordem[0]] * 2 > total:
-        return f"eleito: {ordem[0]}"
-    return f"2º turno: {ordem[0]} × {ordem[1]}"
+        return f"eleito: {nomes[ordem[0]]}"
+    # os dois do 2º turno em ordem alfabética, como em todo o projeto
+    return "2º turno: " + " × ".join(sorted([nomes[ordem[0]], nomes[ordem[1]]]))
 
 
 def disputas(governador: pd.DataFrame) -> pd.DataFrame:
@@ -174,9 +175,8 @@ def analisar(d: pd.Series, oficial: pd.DataFrame, rdv: pd.DataFrame,
             hipotese[candidatos[0]] += q
             destino_votos[digitos] = candidatos[0]
     nomes = dict(zip(oficial["nr_candidato"], oficial["nm_urna"]))
-    nomear = lambda texto: re.sub(r"\d+", lambda m: nomes.get(int(m.group()), m.group()), texto)  # noqa: E731
-    res_oficial = nomear(resultado(votos, int(d["turno"])))
-    res_hipotese = nomear(resultado(hipotese, int(d["turno"])))
+    res_oficial = resultado(votos, int(d["turno"]), nomes)
+    res_hipotese = resultado(hipotese, int(d["turno"]), nomes)
 
     return {
         "ano": int(d["ano"]), "turno": int(d["turno"]), "uf": d["uf"],

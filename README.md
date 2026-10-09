@@ -54,6 +54,26 @@ Toda análise foi testada contra dados reais antes de ser usada.
 | **Reprodução da apuração de 2022** | Reconstruímos a noite da apuração urna por urna e comparamos, minuto a minuto, com o registro oficial do TSE. | Quase idêntica: diferença média de 0,4 ponto no total de urnas apuradas e de 0,07 ponto no placar. |
 | **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Em 93% das atualizações, o resultado final estava dentro da margem de erro da projeção. |
 | **Previsão ao vivo: 1º turno de 2022** | O mesmo teste, com o placar entre LULA e JAIR BOLSONARO. | Com 10% apurado: **0,7 ponto** de erro, contra **5,8** do placar oficial. Com metade apurada: 0,4 contra 3,8. O resultado final esteve dentro da margem de erro em 100% das atualizações. |
+| **Leitura dos votos digitados na urna (RDV)** | Nas 9 disputas de Governador analisadas, somamos os votos de cada candidato lidos voto a voto no RDV e comparamos com o resultado oficial. | Bateu exatamente em 6 disputas; nas outras 3, diferença de no máximo 0,02% (uma urna ilegível no RS e votos em candidaturas indeferidas em SC e na BA). |
+
+## Destaque: votos para Governador anulados com o número de um presidenciável
+
+Quem digita para Governador o número de um candidato a Presidente (por exemplo, 13 ou 22) e
+não existe candidato a Governador com esse número no estado tem o voto anulado.
+O TSE publica o registro de cada voto digitado (RDV), então dá para contar.
+
+Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
+
+- **Em 7 das 9**, esses votos eram mais do que os que bastariam para mudar o
+  resultado. Exemplo: no DF em 2026, faltaram 2.177 votos para a disputa
+  terminar no 1º turno, e 30.034 votos foram anulados assim.
+- Supondo que cada eleitor queria votar no candidato da coligação do partido
+  daquele número, **o resultado mudaria em 4** (DF, AC, ES e PR, todas em 2026,
+  nos dois sentidos).
+- O RDV não diz a intenção do eleitor e **o resultado oficial é o do TSE**; a
+  análise mede quanto a confusão entre números pesa em disputas apertadas.
+
+[Tabela completa, método e ressalvas](docs/nulos.md).
 
 ## Dificuldades e aprendizados
 
@@ -83,6 +103,11 @@ Toda análise foi testada contra dados reais antes de ser usada.
   horas, porque os municípios pequenos apuram primeiro e votaram diferente das
   capitais. Cada falha virou um ajuste documentado em
   [docs/previsao.md](docs/previsao.md).
+- **Arquivo binário sem leitor pronto.** O RDV vem em ASN.1 (formato binário)
+  e o formato mudou entre 2022 e 2026 (nome do arquivo e posição da lista de
+  votos). Uma leitura errada derrubou horas de processamento; agora valores
+  impossíveis são rejeitados, a leitura é salva em partes e a soma é sempre
+  conferida com o resultado oficial.
 - **Cuidado para não se enganar.** Os testes de 2022 já ajudaram a desenhar a
   previsão ao vivo. O teste realmente independente será a noite de 25/10/2026,
   e o resultado será publicado aqui, acertando ou errando.
@@ -92,7 +117,7 @@ Toda análise foi testada contra dados reais antes de ser usada.
 | Fonte | O que usamos |
 |---|---|
 | [Resultados do TSE](https://resultados.tse.jus.br) (JSON ao vivo) | Apuração minuto a minuto, por município |
-| [Portal de Dados Abertos do TSE](https://dadosabertos.tse.jus.br) | Candidatos, bens, prestação de contas, eleitorado, votação por seção, boletins de urna e histórico da totalização (2014 a 2026) |
+| [Portal de Dados Abertos do TSE](https://dadosabertos.tse.jus.br) | Candidatos, bens, prestação de contas, eleitorado, votação por seção, boletins de urna, registro digital do voto (RDV) e histórico da totalização (2014 a 2026) |
 | IBGE | População, Censo 2022, PIB municipal |
 
 Códigos das eleições de 2026 nos arquivos ao vivo:
@@ -173,6 +198,8 @@ order by m.regiao, pct desc;
       eleitores estimada por inferência ecológica ([resultados](docs/previsao.md#cenários-para-onde-vão-os-eleitores-dos-eliminados))
 - [x] Previsão ao vivo durante a apuração, testada reproduzindo as duas
       apurações de 2022 seção por seção ([resultados](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração))
+- [x] Votos para Governador anulados com número de presidenciável nas disputas
+      apertadas, contados voto a voto no RDV ([resultados](docs/nulos.md))
 - [ ] Análises: resultados, perfil dos candidatos, patrimônio, eleitorado,
       dinheiro de campanha
 - [ ] Recorte do Distrito Federal
