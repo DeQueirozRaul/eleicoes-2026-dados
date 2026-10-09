@@ -23,7 +23,7 @@ with historico as (
 ao_vivo as (
     select
         2026                            as ano,
-        if(filename like '%/e6258_c1/%', 2, 1) as turno,
+        if(filename like '%e6258_c1%', 2, 1) as turno,
         upper(uf)                       as uf,
         cd_municipio_tse,
         qt_eleitores                    as qt_aptos,

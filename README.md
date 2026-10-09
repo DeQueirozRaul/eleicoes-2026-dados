@@ -12,6 +12,8 @@ seção: a projeção ficou do lado do vencedor desde 5% apurado, mais de uma ho
 antes de o placar oficial virar (o mesmo aconteceu no 1º turno).
 [Como funciona](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração).*
 
+**Para rodar no seu computador:** [passo a passo](docs/como_rodar.md).
+
 ## ⚖️ Compromisso de neutralidade
 
 Este é um projeto **apartidário**. Ele não apoia, critica nem faz campanha
@@ -37,17 +39,21 @@ para nenhum candidato, partido ou campo político. Na prática:
 
 ## Quão bem funciona (e quanto erra)
 
-Toda análise é testada contra dados reais antes de ser usada:
+Toda análise foi testada contra dados reais antes de ser usada.
 
-| Análise | Como foi testada | Resultado |
+> **Como ler os números:** "ponto" (ou ponto percentual) é a diferença entre duas
+> porcentagens. Se a projeção dizia 50,4% e o resultado final foi 50,9%, o erro
+> foi de **0,5 ponto**.
+
+| Análise | Como testamos | Resultado |
 |---|---|---|
-| Coletor ao vivo | soma dos 5.757 municípios × total nacional (1º turno de 2026) | 0 votos de diferença |
-| Base histórica (2002–2022) | soma dos candidatos × votos válidos, município a município | 0 diferenças (exceto 18.876 votos sem explicação nos arquivos de 2006, 0,02%) |
-| Previsão do 2º turno antes da eleição | cada eleição de 2002 a 2022 prevista com as outras cinco | erro nacional mediano de 1,5 ponto (médio 2,6; pior caso 8,7, em 2006); 3,1 pontos por município; resultado dentro do intervalo de 90% em 5 de 6 |
-| Cenários de transferência dos eliminados | mesmo teste, de 2006 a 2022 | erro médio de 3,4 pontos, pior que o modelo principal (2,7); por isso fica só como cenário |
-| Reprodução da apuração de 2022 | curva reproduzida × histórico oficial de totalização | 0,4 ponto no % apurado e 0,07 ponto no % do candidato |
-| Previsão ao vivo, 2º turno de 2022 | erro em relação ao resultado final | 0,5 ponto com 10% apurado (placar oficial: 2,9); 0,6 com 50% (placar: 1,2); final dentro do intervalo de 90% em 93% dos momentos |
-| Previsão ao vivo, 1º turno de 2022 | erro em relação ao resultado final | 0,7 ponto com 10% apurado (placar oficial: 5,8); 0,4 com 50% (placar: 3,8); final dentro do intervalo em 100% dos momentos |
+| **Coletor ao vivo** | Somamos os votos dos 5.757 municípios e comparamos com o total do Brasil divulgado pelo TSE (1º turno de 2026). | Bateu exatamente: nenhum voto de diferença. |
+| **Base histórica (2002–2022)** | Em cada município, conferimos se a soma dos votos dos candidatos é igual ao total de votos válidos. | Bateu em todos os municípios. Única exceção: 18.876 votos de 2006 que não fecham nos próprios arquivos do TSE (0,02% do total). |
+| **Previsão do 2º turno antes da eleição** | "Escondemos" o resultado de cada eleição de 2002 a 2022 e tentamos prevê-lo usando só as outras cinco. | Em metade das eleições o erro foi de até 1,5 ponto; no pior caso (2006), 8,7 pontos. O resultado real ficou dentro da margem de erro do modelo em 5 das 6 eleições. |
+| **Cenários de transferência dos eliminados** | O mesmo teste, de 2006 a 2022. | Errou em média 3,4 pontos, mais que o modelo principal (2,7). Por isso é usado só para montar cenários, não como previsão. |
+| **Reprodução da apuração de 2022** | Reconstruímos a noite da apuração urna por urna e comparamos, minuto a minuto, com o registro oficial do TSE. | Quase idêntica: diferença média de 0,4 ponto no total de urnas apuradas e de 0,07 ponto no placar. |
+| **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Em 93% das atualizações, o resultado final estava dentro da margem de erro da projeção. |
+| **Previsão ao vivo: 1º turno de 2022** | O mesmo teste, com o placar entre LULA e JAIR BOLSONARO. | Com 10% apurado: **0,7 ponto** de erro, contra **5,8** do placar oficial. Com metade apurada: 0,4 contra 3,8. O resultado final esteve dentro da margem de erro em 100% das atualizações. |
 
 ## Dificuldades e aprendizados
 
@@ -111,38 +117,26 @@ dados/             dados baixados e gerados (fora do git; recriados pelos script
 
 ## Como rodar
 
-```bash
+**Passo a passo completo, pensado para Windows: [docs/como_rodar.md](docs/como_rodar.md).**
+
+Resumo:
+
+```bat
 python -m venv .venv
-source .venv/bin/activate          # no Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
+.venv\Scripts\python -m pip install -r requirements-dev.txt
 
-# 1. resultado do 1º turno de 2026 para Presidente, município a município (~2 min)
-python scripts/coletar_ao_vivo.py --eleicao 6257 --cargo 1
+:: essencial (~5 min): 1º turno de 2026, histórico, banco, previsão e cenários
+.venv\Scripts\python scripts\rodar_tudo.py
 
-# 2. resultados presidenciais de 2002 a 2022 (só os arquivos nacionais, ~15 s)
-python scripts/baixar_historico.py
+:: tudo (~1h30): também as apurações de 2022, gráficos e votos nulos nas disputas apertadas
+.venv\Scripts\python scripts\rodar_tudo.py --completo
 
-# 3. monta o banco dados/eleicoes.duckdb e roda as checagens de qualidade
-python scripts/montar_base.py
-
-# 4. valida o modelo nas eleições passadas e gera a previsão do 2º turno de 2026
-python scripts/prever_2t.py
-
-# 5. de onde vieram os eleitores dos eliminados e cenários de transferência
-python scripts/cenarios_transferencia.py
-
-# 6. teste da previsão ao vivo reproduzindo as apurações de 2022
-python scripts/baixar_boletins_2022.py --turno 2    # e --turno 1 (~1,2 GB de download)
-python scripts/reproduzir_apuracao_2022.py
-python scripts/testar_ao_vivo_2022.py --turno 2     # e --turno 1
-python scripts/grafico_apuracao_2022.py
-
-# na noite do 2º turno (25/10), em dois terminais:
-python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
-python scripts/previsao_ao_vivo.py --eleicao 6258 --intervalo 60
-
-pytest
+:: testes automáticos
+.venv\Scripts\python -m pytest
 ```
+
+Os resultados ficam em `dados\` e, prontos para Excel e Power BI, em `dados\exportar\`.
+No Linux e no Mac, troque `.venv\Scripts\python` por `.venv/bin/python`.
 
 O banco `dados/eleicoes.duckdb` tem as tabelas:
 

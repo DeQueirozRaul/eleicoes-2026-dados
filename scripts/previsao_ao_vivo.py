@@ -65,7 +65,7 @@ def main() -> None:
 
     while True:
         if any(pasta.glob("*/andamento.parquet")):
-            estado = estado_do_coletor(str(pasta), int(a["nr_candidato"]), int(b["nr_candidato"]), prior)
+            estado = estado_do_coletor(pasta.as_posix(), int(a["nr_candidato"]), int(b["nr_candidato"]), prior)
             p = projetar(estado, parametros, cenarios=4000)
             agora = datetime.now(FUSO_BRASILIA)
             linha = pd.DataFrame([{"momento": agora.isoformat(timespec="seconds"), **vars(p)}])
