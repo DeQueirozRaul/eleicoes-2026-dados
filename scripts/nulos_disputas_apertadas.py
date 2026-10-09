@@ -154,7 +154,10 @@ def analisar(d: pd.Series, oficial: pd.DataFrame, rdv: pd.DataFrame,
     gov = rdv[rdv["cargo"] == GOVERNADOR]
     nominais = gov[gov["tipo"] == 2].groupby("digitos")["qt"].sum()
     votos = dict(zip(oficial["nr_candidato"], oficial["qt_votos"]))
-    confere = all(int(nominais.get(f"{nr:02d}", 0)) == int(q) for nr, q in votos.items())
+    # Diferenças pequenas são esperadas: urnas cujo RDV não pôde ser lido e votos em
+    # candidaturas indeferidas (contam como nominais no RDV e como nulos no oficial).
+    diferenca = sum(int(nominais.get(f"{nr:02d}", 0)) - int(q) for nr, q in votos.items())
+    confere = abs(diferenca) <= 0.001 * sum(votos.values())
 
     nulos = gov[~gov["tipo"].isin(VALIDOS_OU_BRANCOS)]
     com_presid = nulos[nulos["digitos"].isin([f"{n:02d}" for n in presidenciaveis])]
@@ -187,6 +190,7 @@ def analisar(d: pd.Series, oficial: pd.DataFrame, rdv: pd.DataFrame,
         "para_quem_na_hipotese": ", ".join(f"{dg}→{nomes.get(nr, nr)}" for dg, nr in destino_votos.items()),
         "resultado_na_hipotese": res_hipotese,
         "hipotese_muda_resultado": res_hipotese != res_oficial,
+        "diferenca_rdv_oficial": diferenca,
         "rdv_confere_com_oficial": confere,
     }
 
