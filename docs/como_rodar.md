@@ -55,7 +55,7 @@ resultado:
 | 6 | Exporta as tabelas em CSV | `dados\exportar\` |
 
 Para rodar **tudo** (inclui a reprodução das apurações de 2022, os gráficos e
-os votos nulos nas disputas apertadas; ~1h30 e ~2 GB de download):
+os votos nulos nas disputas apertadas; de 1h30 a 2h, conforme a internet, e ~2 GB de download):
 
 ```bat
 .venv\Scripts\python scripts\rodar_tudo.py --completo

@@ -153,7 +153,7 @@ python -m venv .venv
 :: essencial (~5 min): 1º turno de 2026, histórico, banco, previsão e cenários
 .venv\Scripts\python scripts\rodar_tudo.py
 
-:: tudo (~1h30): também as apurações de 2022, gráficos e votos nulos nas disputas apertadas
+:: tudo (1h30 a 2h): também as apurações de 2022, gráficos e votos nulos nas disputas apertadas
 .venv\Scripts\python scripts\rodar_tudo.py --completo
 
 :: testes automáticos

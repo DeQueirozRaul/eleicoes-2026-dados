@@ -1,7 +1,7 @@
 """Roda o projeto inteiro, em ordem, explicando cada etapa.
 
     python scripts/rodar_tudo.py              # essencial: ~5 min, ~300 MB de download
-    python scripts/rodar_tudo.py --completo   # tudo: ~1h30, ~2 GB de download
+    python scripts/rodar_tudo.py --completo   # tudo: 1h30 a 2h, ~2 GB de download
 
 Cada etapa só refaz o que falta: rodar de novo é rápido.
 """
