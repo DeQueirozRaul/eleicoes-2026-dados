@@ -81,6 +81,9 @@ def ler_rdv(conteudo: bytes) -> Counter:
                 campos = _filhos(conteudo, a3, b3)
                 tipo = _inteiro(conteudo, campos[0])
                 digitos = conteudo[campos[1][1]:campos[1][2]].decode("ascii") if len(campos) > 1 else ""
+                if not (0 < eleicao < 100_000 and 0 < cargo < 100 and 0 < tipo < 50
+                        and (digitos == "" or (digitos.isdigit() and len(digitos) <= 6))):
+                    raise ValueError(f"estrutura inesperada: {(eleicao, cargo, tipo, digitos)!r}")
                 votos[(eleicao, cargo, tipo, digitos)] += 1
     return votos
 
@@ -117,9 +120,10 @@ class ZipRemotoRDV:
             return zlib.decompressobj(-15).decompress(dados)
         return dados
 
-    def contar(self, paralelos: int = 4) -> Counter:
-        """Soma os votos de todos os RDVs do zip. Arquivos que não puderem ser
-        lidos ficam em `self.falhas` (nome do arquivo e erro), sem interromper."""
+    def contar(self, paralelos: int = 4, membros: list[zipfile.ZipInfo] | None = None) -> Counter:
+        """Soma os votos dos RDVs do zip (todos, ou só `membros`). Arquivos que não
+        puderem ser lidos ficam em `self.falhas` (nome e erro), sem interromper."""
+        membros = self.membros if membros is None else membros
         total: Counter = Counter()
         self.falhas: list[tuple[str, str]] = []
 
@@ -133,7 +137,7 @@ class ZipRemotoRDV:
                     self.falhas.append((info.filename, repr(erro)))
             return parcial
 
-        fatias = [self.membros[i::paralelos] for i in range(paralelos)]
+        fatias = [membros[i::paralelos] for i in range(paralelos)]
         with ThreadPoolExecutor(max_workers=paralelos) as executor:
             for parcial in executor.map(lote, fatias):
                 total += parcial

@@ -115,18 +115,32 @@ def coligacoes_2022(uf: str) -> dict[int, set[str]]:
 # 3: contagem dos RDVs
 # ---------------------------------------------------------------------------
 
-def contagem_rdv(ano: int, turno: int, uf: str, paralelos: int) -> pd.DataFrame:
-    """Votos por cargo, tipo e número digitado em todas as urnas da UF (com cache)."""
+def contagem_rdv(ano: int, turno: int, uf: str, paralelos: int, parte: int = 2000) -> pd.DataFrame:
+    """Votos por cargo, tipo e número digitado em todas as urnas da UF.
+
+    Lê as urnas em partes de `parte` e guarda cada parte assim que termina:
+    se a leitura cair no meio, rodar de novo continua de onde parou."""
     destino = SAIDA / "rdv" / f"{ano}_{turno}t_{uf}.parquet"
     if destino.exists():
         return pd.read_parquet(destino)
+    pasta_partes = SAIDA / "rdv" / f"{ano}_{turno}t_{uf}"
+    pasta_partes.mkdir(parents=True, exist_ok=True)
     leitor = ZipRemotoRDV(URL_RDV.format(ano=ano, turno=turno, uf=uf))
-    contagem = leitor.contar(paralelos=paralelos)
-    if leitor.falhas:
-        print(f"   {len(leitor.falhas)} de {len(leitor.membros)} RDVs não puderam ser lidos: {leitor.falhas[:3]}")
-    df = pd.DataFrame([(e, c, t, d, q) for (e, c, t, d), q in contagem.items()],
-                      columns=["cd_eleicao", "cargo", "tipo", "digitos", "qt"])
-    destino.parent.mkdir(parents=True, exist_ok=True)
+    falhas = []
+    for i in range(0, len(leitor.membros), parte):
+        arquivo = pasta_partes / f"parte_{i // parte:03d}.parquet"
+        if arquivo.exists():
+            continue
+        contagem = leitor.contar(paralelos=paralelos, membros=leitor.membros[i:i + parte])
+        falhas += leitor.falhas
+        linhas = [(e, c, t, d, q) for (e, c, t, d), q in contagem.items()]
+        pd.DataFrame(linhas, columns=["cd_eleicao", "cargo", "tipo", "digitos", "qt"]).astype(
+            {"cd_eleicao": "int64", "cargo": "int64", "tipo": "int64", "qt": "int64"}).to_parquet(arquivo, index=False)
+        print(f"   {min(i + parte, len(leitor.membros))}/{len(leitor.membros)} urnas", flush=True)
+    if falhas:
+        print(f"   {len(falhas)} RDVs não puderam ser lidos (ficam de fora): {falhas[:3]}", flush=True)
+    df = (pd.concat([pd.read_parquet(f) for f in sorted(pasta_partes.glob("parte_*.parquet"))])
+          .groupby(["cd_eleicao", "cargo", "tipo", "digitos"], as_index=False)["qt"].sum())
     df.to_parquet(destino, index=False)
     return df
 
