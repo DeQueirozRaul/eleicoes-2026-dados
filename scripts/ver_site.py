@@ -57,7 +57,7 @@ def main() -> int:
                 time.sleep(args.espera)
                 altura = pagina.evaluate(
                     "() => Math.max(...[...document.querySelectorAll('section, div')].map(e => e.scrollHeight))")
-                pagina.set_viewport_size({"width": largura, "height": min(max(altura, 900), 12000)})
+                pagina.set_viewport_size({"width": largura, "height": min(max(altura, 900), 20000)})
                 time.sleep(1.5)
                 excecoes = pagina.locator("[data-testid='stException']").count()
                 erros += excecoes
