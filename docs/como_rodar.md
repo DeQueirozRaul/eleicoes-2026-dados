@@ -53,6 +53,7 @@ resultado:
 | 4 | Testa o modelo do 2º turno nas eleições passadas e prevê 2026 | `dados\modelo\` |
 | 5 | Cenários de transferência dos votos dos eliminados | `dados\modelo\` |
 | 6 | Exporta as tabelas em CSV | `dados\exportar\` |
+| 7 | Prepara os arquivos que o site lê | `app\dados\` |
 
 Para rodar **tudo** (inclui a reprodução das apurações de 2022, os gráficos e
 os votos nulos nas disputas apertadas; de 1h30 a 2h, conforme a internet, e ~2 GB de download):
@@ -89,6 +90,15 @@ baixado outra vez.
 | `teste_ao_vivo_2022_1t.csv` e `_2t.csv` | a cada 2 minutos da noite de 2022: placar oficial × projeção |
 | `disputas_governador.csv` | quantos votos bastariam para mudar cada disputa de Governador |
 | `nulos_disputas_apertadas.csv` | nas disputas apertadas: votos nulos com número de presidenciável × margem |
+
+### Ver o site no seu computador
+
+```bat
+.venv\Scripts\python -m streamlit run app/site.py
+```
+
+Abre no navegador em <http://localhost:8501> (para fechar: `Ctrl+C` no terminal).
+Para publicar na internet, siga [publicar_site.md](publicar_site.md).
 
 ## 7. Conferir que está tudo certo (testes automáticos)
 

@@ -90,10 +90,18 @@ def main() -> None:
     con.close()
     print("Previsão do 2º turno")
     previsao()
+    # estas duas dependem das etapas do modo completo (rodar_tudo.py --completo);
+    # sem elas, o site continua usando os arquivos que já estão em app/dados/
     print("Apuração de 2022")
-    apuracao_2022()
+    if (DADOS / "apuracao" / "teste_ao_vivo_2022_2t.csv").exists():
+        apuracao_2022()
+    else:
+        print("  pulado: rode antes scripts/testar_ao_vivo_2022.py (modo completo)")
     print("Votos no número errado")
-    nulos()
+    if (DADOS / "nulos" / "nulos_disputas_apertadas.csv").exists():
+        nulos()
+    else:
+        print("  pulado: rode antes scripts/nulos_disputas_apertadas.py (modo completo)")
 
 
 if __name__ == "__main__":

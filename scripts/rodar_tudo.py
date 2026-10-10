@@ -58,6 +58,8 @@ def main() -> int:
 
     etapas = ESSENCIAL + (COMPLETO if args.completo else [("Exportar as tabelas para abrir no Power BI ou no Excel",
                                                            ["exportar_tabelas.py"], "dados/exportar/")])
+    etapas.append(("Preparar os arquivos do site" + (" (todas as páginas; baixa mais dados)" if args.completo else ""),
+                   ["preparar_site.py"] + ([] if args.completo else ["base", "ao_vivo"]), "app/dados/"))
     inicio_geral = time.monotonic()
     for i, (descricao, comando, resultado) in enumerate(etapas, 1):
         print(f"\n[{i}/{len(etapas)}] {descricao}", flush=True)
@@ -69,7 +71,8 @@ def main() -> int:
         print(f"      ok em {time.monotonic() - inicio:.0f} s -> {resultado}", flush=True)
 
     print(f"\nPronto em {(time.monotonic() - inicio_geral) / 60:.1f} min. "
-          "Os resultados estão em dados/ (e os gráficos em docs/img/).")
+          "Os resultados estão em dados/ (e os gráficos em docs/img/).\n"
+          "Para ver o site: python -m streamlit run app/site.py")
     return 0
 
 
