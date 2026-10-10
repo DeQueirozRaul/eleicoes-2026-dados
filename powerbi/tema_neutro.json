@@ -1,0 +1,13 @@
+{
+  "name": "Eleições 2026 - neutro",
+  "dataColors": ["#6250d6", "#199e70", "#2a78d6", "#eb6834", "#898781", "#c3c2b7", "#184f95", "#0b5a3e"],
+  "background": "#FFFFFF",
+  "foreground": "#0b0b0b",
+  "tableAccent": "#3d3c39",
+  "good": "#0ca30c",
+  "neutral": "#c3c2b7",
+  "bad": "#d03b3b",
+  "maximum": "#184f95",
+  "center": "#f0efec",
+  "minimum": "#cde2fb"
+}

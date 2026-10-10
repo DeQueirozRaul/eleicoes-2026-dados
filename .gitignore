@@ -5,7 +5,11 @@ __pycache__/
 .pytest_cache/
 
 # dados baixados ou gerados (são reproduzíveis pelos scripts)
-dados/
+/dados/
 *.parquet
 *.duckdb
 *.zip
+
+# exceção: os arquivos pequenos que o site lê ficam no git
+!app/dados/
+!app/dados/*.parquet

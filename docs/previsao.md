@@ -303,7 +303,7 @@ Erro em relação ao resultado final (pontos percentuais):
   frente o tempo todo nos dois turnos. O placar oficial só virou às 18h44 no
   2º turno (68% apurado) e às 20h00 no 1º (67%).
 - **Intervalo honesto:** o resultado final ficou dentro do intervalo de 90% em
-  93% dos momentos no 2º turno e em 100% no 1º. A largura média do intervalo
+  92% dos momentos (a partir de 5% apurado) no 2º turno e em 100% no 1º. A largura média do intervalo
   foi de ~3 pontos com 5–10% apurado, ~2 pontos com 25–50% e ~1,2 ponto com
   50–75%.
 - **Chance acima de 90%:** de forma estável, a partir de 18h40 no 2º turno (64%

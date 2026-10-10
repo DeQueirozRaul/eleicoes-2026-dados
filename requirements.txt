@@ -4,4 +4,6 @@ requests>=2.31
 duckdb>=1.1
 scipy>=1.11
 matplotlib>=3.8
+shapely>=2.0     # mapa do DF: liga cada local de votação à região administrativa
 tzdata          # fusos horários no Windows (o Python não traz)
+-r app/requirements.txt   # site (Streamlit e Plotly)

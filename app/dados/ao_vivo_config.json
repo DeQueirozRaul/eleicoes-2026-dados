@@ -1,0 +1,25 @@
+{
+  "eleicao": 6258,
+  "cargo": 1,
+  "inicio_apuracao": "2026-10-25T17:00:00-03:00",
+  "finalistas": {
+    "A": {
+      "nr_candidato": 22,
+      "nm_urna": "FLAVIO BOLSONARO"
+    },
+    "B": {
+      "nr_candidato": 13,
+      "nm_urna": "LULA"
+    }
+  },
+  "parametros": {
+    "tau_nacional": 0.16377624992289805,
+    "sigma_uf": 0.12482999353833858,
+    "sigma_mun": 0.1379414534354854,
+    "c_tamanho": 11.288610098543204,
+    "sigma_parcial": 0.2,
+    "sigma_tamanho": 0.2,
+    "sigma_restante_nacional": 0.04,
+    "sigma_restante_uf": 0.05
+  }
+}
