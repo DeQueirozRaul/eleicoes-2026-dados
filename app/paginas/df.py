@@ -107,7 +107,7 @@ coordenadas = np.array([ponto for f in poligonos()["features"] for parte in f["g
 fig.update_geos(visible=False, projection_type="mercator", bgcolor="rgba(0,0,0,0)",
                 lonaxis_range=[x0 - 0.01, x1 + 0.01], lataxis_range=[y0 - 0.01, y1 + 0.01])
 fig.update_layout(dragmode=False)
-comum.estilo(fig, altura=620, legenda=False)
+comum.estilo(fig, altura=520, legenda=False)
 fig.update_layout(margin=dict(l=0, r=0, t=0, b=70))
 st.markdown(f"**{d['titulo']}: diferença entre {primeiro} e {segundo}, por "
             f"{'região administrativa' if nivel == 'Região administrativa' else 'local de votação'}**")
