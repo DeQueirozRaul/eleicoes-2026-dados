@@ -6,6 +6,10 @@ conferir o visual sem precisar abrir o navegador.
     python scripts/ver_site.py --celular            # largura de celular
 
 Precisa do Playwright (pip install playwright; python -m playwright install chromium).
+
+Os mapas do Plotly baixam um contorno do mundo de cdn.plot.ly. Em ambientes em que o
+navegador não alcança esse endereço (ex.: atrás de um proxy), o Python baixa o
+arquivo e o entrega ao navegador, para a foto mostrar o mapa como o visitante vê.
 """
 
 from __future__ import annotations
@@ -18,9 +22,29 @@ import sys
 import time
 from pathlib import Path
 
+import requests
+
 RAIZ = Path(__file__).resolve().parents[1]
 PAGINAS = ["", "resultados", "numero-errado", "candidatos", "patrimonio", "campanha", "eleitorado",
            "previsao", "apuracao", "df", "conferencia"]
+
+
+CACHE_PLOTLY = RAIZ / "dados" / "brutos" / "plotly"
+
+
+def servir_cdn_plotly(rota) -> None:
+    """Atende pelo Python os pedidos do navegador a cdn.plot.ly (guardando uma cópia)."""
+    nome = rota.request.url.split("cdn.plot.ly/", 1)[1].split("?")[0].replace("/", "_")
+    arquivo = CACHE_PLOTLY / nome
+    if not arquivo.exists():
+        resposta = requests.get(rota.request.url, timeout=60)
+        if resposta.status_code != 200:
+            rota.fulfill(status=resposta.status_code)
+            return
+        CACHE_PLOTLY.mkdir(parents=True, exist_ok=True)
+        arquivo.write_bytes(resposta.content)
+    rota.fulfill(body=arquivo.read_bytes(), content_type="application/json",
+                 headers={"Access-Control-Allow-Origin": "*"})
 
 
 def porta_livre() -> int:
@@ -52,6 +76,7 @@ def main() -> int:
             navegador = p.chromium.launch(executable_path=executavel if Path(executavel).exists() else None)
             largura = 390 if args.celular else 1300
             pagina = navegador.new_page(viewport={"width": largura, "height": 900})
+            pagina.route("https://cdn.plot.ly/**", servir_cdn_plotly)
             for nome in args.paginas or PAGINAS:
                 pagina.goto(f"http://127.0.0.1:{porta}/{nome}", wait_until="networkidle")
                 time.sleep(args.espera)

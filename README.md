@@ -136,9 +136,12 @@ Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
   deputados do Amazonas (8 vagas federais e 24 estaduais sem eleitos) e havia
   491 candidaturas com votos anulados sub judice. As páginas avisam, e os números
   se atualizam ao rodar os scripts de novo.
-- **Mapas em branco.** Os mapas do Plotly baixam um contorno do mundo de um site
-  externo; num ambiente sem acesso a ele, o mapa sai vazio. A cópia desse
-  arquivo passou a ser servida pelo próprio site.
+- **Mapas em branco.** Os mapas do Plotly baixam um contorno do mundo de
+  cdn.plot.ly. No ambiente de teste, sem acesso a esse endereço, eles saíam
+  vazios; servir o arquivo pelo próprio site resolveu ali, mas deixou os mapas
+  vazios no Streamlit Cloud, onde aquele caminho não existe. Voltamos ao endereço
+  padrão, e a ferramenta de fotos do site (`scripts/ver_site.py`) é que passou a
+  entregar o arquivo ao navegador de teste.
 - **Cuidado para não se enganar.** Os testes de 2022 já ajudaram a desenhar a
   previsão ao vivo. O teste realmente independente será a noite de 25/10/2026,
   e o resultado será publicado aqui, acertando ou errando.
