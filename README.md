@@ -14,6 +14,28 @@ antes de o placar oficial virar (o mesmo aconteceu no 1º turno).
 
 **Para rodar no seu computador:** [passo a passo](docs/como_rodar.md).
 
+## O site
+
+Todas as análises estão num site em Streamlit, com gráficos interativos, mapas e
+a tabela com os números de cada gráfico
+([como publicar](docs/publicar_site.md)):
+
+| Página | O que mostra |
+|---|---|
+| Resultados e mapa | quem ficou à frente em cada município, quem mudou de lado desde 2022, brancos, nulos e abstenção, quociente eleitoral, voto dividido |
+| Votos no número errado | votos para Governador anulados com o número de um presidenciável nas disputas apertadas |
+| Perfil dos candidatos | gênero, cor ou raça, idade e escolaridade de candidatos e eleitos × população; mulheres por partido; títulos no nome de urna; reeleição |
+| Patrimônio declarado | bens por cargo e partido e a evolução desde 2018, descontada a inflação |
+| Eleitorado | pirâmide etária, voto facultativo (16–17 e 70+), municípios com mais eleitores que habitantes, abstenção por perfil |
+| Previsão do 2º turno | previsão com margem de erro, teste nas eleições passadas e cenários dos eliminados |
+| Apuração ao vivo | na noite de 25/10, placar e projeção a cada minuto; até lá, o teste com 2022 |
+| Mapa do DF | as 35 regiões administrativas e os locais de votação do DF, 2022 e 2026 |
+| Conferência dos dados | as somas batem com o oficial? E por que a Lei de Benford não prova fraude |
+| Dinheiro de campanha | entra em novembro, quando fecharem as prestações de contas |
+
+Para abrir no seu computador: `.venv\Scripts\python -m streamlit run app/site.py`.
+O mesmo modelo de dados sai pronto para o **Power BI** ([passo a passo](docs/powerbi.md)).
+
 ## ⚖️ Compromisso de neutralidade
 
 Este é um projeto **apartidário**. Ele não apoia, critica nem faz campanha
@@ -55,6 +77,8 @@ Toda análise foi testada contra dados reais antes de ser usada.
 | **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Em 92% das atualizações, o resultado final estava dentro da margem de erro da projeção. |
 | **Previsão ao vivo: 1º turno de 2022** | O mesmo teste, com o placar entre LULA e JAIR BOLSONARO. | Com 10% apurado: **0,7 ponto** de erro, contra **5,8** do placar oficial. Com metade apurada: 0,4 contra 3,8. O resultado final esteve dentro da margem de erro em 100% das atualizações. |
 | **Leitura dos votos digitados na urna (RDV)** | Nas 9 disputas de Governador analisadas, somamos os votos de cada candidato lidos voto a voto no RDV e comparamos com o resultado oficial. | Bateu exatamente em 6 disputas; nas outras 3, diferença de no máximo 0,02% (uma urna ilegível no RS e votos em candidaturas indeferidas em SC e na BA). |
+| **Soma das seções × oficial (1º turno de 2026)** | Somamos os votos das 499.248 seções e comparamos com o resultado oficial, por candidato, UF e município. | Bateu exatamente. Os 5.246 votos no nº 28 (candidatura que renunciou) aparecem nas seções, mas o TSE os conta como nulos, e a conta dos nulos também fecha. |
+| **Mapa do DF** | Somamos as seções de cada local de votação e região administrativa e comparamos com o resultado do DF. | Bateu exatamente nas quatro disputas (Presidente 2022 e 2026, Governador 2026). |
 
 ## Destaque: votos para Governador anulados com o número de um presidenciável
 
@@ -108,6 +132,13 @@ Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
   votos). Uma leitura errada derrubou horas de processamento; agora valores
   impossíveis são rejeitados, a leitura é salva em partes e a soma é sempre
   conferida com o resultado oficial.
+- **Dados que ainda mudam.** Em 10/10 o TSE ainda reprocessava a eleição de
+  deputados do Amazonas (8 vagas federais e 24 estaduais sem eleitos) e havia
+  491 candidaturas com votos anulados sub judice. As páginas avisam, e os números
+  se atualizam ao rodar os scripts de novo.
+- **Mapas em branco.** Os mapas do Plotly baixam um contorno do mundo de um site
+  externo; num ambiente sem acesso a ele, o mapa sai vazio. A cópia desse
+  arquivo passou a ser servida pelo próprio site.
 - **Cuidado para não se enganar.** Os testes de 2022 já ajudaram a desenhar a
   previsão ao vivo. O teste realmente independente será a noite de 25/10/2026,
   e o resultado será publicado aqui, acertando ou errando.
@@ -118,7 +149,9 @@ Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
 |---|---|
 | [Resultados do TSE](https://resultados.tse.jus.br) (JSON ao vivo) | Apuração minuto a minuto, por município |
 | [Portal de Dados Abertos do TSE](https://dadosabertos.tse.jus.br) | Candidatos, bens, prestação de contas, eleitorado, votação por seção, boletins de urna, registro digital do voto (RDV) e histórico da totalização (2014 a 2026) |
-| IBGE | População, Censo 2022, PIB municipal |
+| [IBGE](https://sidra.ibge.gov.br) | Censo 2022 (tabelas 10061, 4709 e 9514 do SIDRA), estimativa de população de 2026 (tabela 6579) e malha de municípios (API de malhas v4) |
+| [IPE-DF](https://catalogo.ipe.df.gov.br/layers/geonode:regioes_administrativas) | Limites das 35 regiões administrativas do DF (domínio público) |
+| [Banco Central](https://www3.bcb.gov.br/sgspub) | IPCA (série 433), para descontar a inflação do patrimônio |
 
 Códigos das eleições de 2026 nos arquivos ao vivo:
 
@@ -132,11 +165,13 @@ Códigos das eleições de 2026 nos arquivos ao vivo:
 ## Estrutura
 
 ```
-eleicoes/          código reutilizável (leitura dos dados do TSE e modelo de 2º turno)
-scripts/           coletas e rotinas executáveis
+app/               o site (Streamlit): páginas em app/paginas, dados pequenos em app/dados
+eleicoes/          código reutilizável (leitura dos dados do TSE, modelos, apuração ao vivo)
+scripts/           coletas e rotinas executáveis (site_*.py preparam os dados do site)
 sql/               transformações em SQL (DuckDB) e checagens de qualidade (sql/checagens)
 tests/             testes automatizados (com arquivos reais do TSE em tests/fixtures)
-docs/              metodologia
+docs/              metodologia e guias
+powerbi/           tema do Power BI (e o painel, quando for montado)
 dados/             dados baixados e gerados (fora do git; recriados pelos scripts)
 ```
 
@@ -155,6 +190,9 @@ python -m venv .venv
 
 :: tudo (1h30 a 2h): também as apurações de 2022, gráficos e votos nulos nas disputas apertadas
 .venv\Scripts\python scripts\rodar_tudo.py --completo
+
+:: abrir o site no navegador
+.venv\Scripts\python -m streamlit run app/site.py
 
 :: testes automáticos
 .venv\Scripts\python -m pytest
@@ -200,7 +238,12 @@ order by m.regiao, pct desc;
       apurações de 2022 seção por seção ([resultados](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração))
 - [x] Votos para Governador anulados com número de presidenciável nas disputas
       apertadas, contados voto a voto no RDV ([resultados](docs/nulos.md))
-- [ ] Análises: resultados, perfil dos candidatos, patrimônio, eleitorado,
-      dinheiro de campanha
-- [ ] Recorte do Distrito Federal
-- [ ] Site público (Streamlit) e painéis em Power BI
+- [x] Análises: resultados e mapa, perfil dos candidatos, patrimônio, eleitorado
+      e conferência dos dados (com a Lei de Benford)
+- [x] Recorte do Distrito Federal: mapa por região administrativa e local de votação
+- [x] Site em Streamlit com todas as análises e a apuração ao vivo
+- [x] Modelo de dados para o Power BI ([passo a passo](docs/powerbi.md))
+- [ ] Publicar o site ([como](docs/publicar_site.md))
+- [ ] Painel no Power BI
+- [ ] Noite de 25/10: apuração ao vivo e comparação da previsão com o resultado
+- [ ] Dinheiro de campanha (novembro, quando fecharem as prestações de contas)
