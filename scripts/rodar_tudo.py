@@ -60,6 +60,8 @@ def main() -> int:
                                                            ["exportar_tabelas.py"], "dados/exportar/")])
     etapas.append(("Preparar os arquivos do site" + (" (todas as páginas; baixa mais dados)" if args.completo else ""),
                    ["preparar_site.py"] + ([] if args.completo else ["base", "ao_vivo"]), "app/dados/"))
+    etapas.append(("Exportar o modelo para o Power BI (veja docs/powerbi.md)",
+                   ["exportar_powerbi.py"], "dados/exportar/powerbi/"))
     inicio_geral = time.monotonic()
     for i, (descricao, comando, resultado) in enumerate(etapas, 1):
         print(f"\n[{i}/{len(etapas)}] {descricao}", flush=True)
