@@ -111,7 +111,10 @@ def mostrar(fig: go.Figure, tabela: pd.DataFrame | None = None, fonte: str | Non
             chave: str | None = None) -> None:
     """Mostra o gráfico, a fonte e, num quadro que abre e fecha, a tabela com os
     mesmos números (quem não enxerga bem as cores ou quer o valor exato lê ali)."""
-    st.plotly_chart(fig, config={"displayModeBar": False, "scrollZoom": False}, theme=None, key=chave)
+    # topojsonURL: os mapas do Plotly carregam um contorno do mundo; servimos a cópia de app/static/
+    # em vez de depender de cdn.plot.ly
+    st.plotly_chart(fig, config={"displayModeBar": False, "scrollZoom": False, "topojsonURL": "/app/static/"},
+                    theme=None, key=chave)
     if fonte:
         st.caption(f"Fonte: {fonte}")
     if tabela is not None:
