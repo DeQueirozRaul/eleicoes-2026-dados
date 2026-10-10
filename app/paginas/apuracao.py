@@ -1,10 +1,28 @@
+import json
+import os
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
 import comum
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # para importar o pacote eleicoes
+
+from eleicoes.acompanhamento import Acompanhamento  # noqa: E402
+from eleicoes.ao_vivo import MINIMO_APURADO, Parametros  # noqa: E402
+from eleicoes.tse_ao_vivo import FUSO_BRASILIA  # noqa: E402
+
 PLACAR, PROJECAO = comum.SERIE, comum.DESTAQUE
-MINIMO_APURADO = 0.05   # a projeção só é publicada a partir de 5% das seções apuradas
+CONFIG = json.loads((comum.DADOS / "ao_vivo_config.json").read_text(encoding="utf-8"))
+INICIO = datetime.fromisoformat(CONFIG["inicio_apuracao"])
+# Para testar fora da noite da eleição: AO_VIVO_ELEICAO=6257 (1º turno, já apurado)
+ELEICAO = int(os.environ.get("AO_VIVO_ELEICAO", CONFIG["eleicao"]))
+A, B = CONFIG["finalistas"]["A"], CONFIG["finalistas"]["B"]
+CORES = comum.cores_finalistas([A["nm_urna"], B["nm_urna"]])
+PRIMEIRO = sorted([A["nm_urna"], B["nm_urna"]])[0]   # o gráfico mostra o % do 1º em ordem alfabética
 
 comum.cabecalho(
     "Apuração ao vivo",
@@ -12,12 +30,113 @@ comum.cabecalho(
     "como os votos que ainda faltam devem se dividir.",
 )
 
-st.info(
-    "**Na noite de 25/10**, a partir do fechamento das urnas (17h, horário de Brasília), esta página vai "
-    "mostrar o placar oficial do 2º turno e a projeção, atualizados a cada minuto. Até lá, ela mostra o teste "
-    "feito com as duas apurações de 2022.",
-    icon=":material/schedule:",
-)
+
+@st.cache_resource(show_spinner=False)
+def acompanhamento(eleicao: int) -> Acompanhamento:
+    """Um só acompanhamento por processo, compartilhado por todos os visitantes."""
+    return Acompanhamento(
+        eleicao=eleicao, cargo=CONFIG["cargo"], nr_a=A["nr_candidato"], nr_b=B["nr_candidato"],
+        prior=comum.ler("ao_vivo_prior"), parametros=Parametros(**CONFIG["parametros"]),
+    ).iniciar()
+
+
+def pct_de(nome: str, pct_a: float) -> float:
+    return pct_a if nome == A["nm_urna"] else 1 - pct_a
+
+
+@st.fragment(run_every=60)
+def painel_ao_vivo() -> None:
+    acomp = acompanhamento(ELEICAO)
+    historico = acomp.tabela_historico()
+    agora = datetime.now(FUSO_BRASILIA)
+    if historico.empty:
+        if acomp.erro:
+            st.warning(f"Não foi possível falar com o TSE na última tentativa ({acomp.erro}). "
+                       "Tentando de novo em instantes.", icon=":material/sync_problem:")
+        elif acomp.ultima_tentativa is None:
+            st.info("Conectando ao TSE: a primeira leitura de todos os municípios leva de 2 a 3 minutos.",
+                    icon=":material/hourglass_top:")
+        else:
+            st.info(f"O TSE ainda não começou a divulgar o 2º turno (verificado às "
+                    f"{acomp.ultima_tentativa:%H:%M}). Esta página confere de novo a cada 5 minutos.",
+                    icon=":material/schedule:")
+        return
+
+    ultima = historico.iloc[-1]
+    secoes = ultima["pct_secoes_oficial"] if pd.notna(ultima["pct_secoes_oficial"]) else ultima["pct_secoes"]
+    st.markdown(f"**{comum.pct(secoes, 2)} das seções apuradas** · atualizado às {ultima['momento']:%H:%M} "
+                f"(horário de Brasília) · a página se atualiza sozinha a cada minuto")
+    if acomp.erro:
+        st.warning(f"A última leitura do TSE falhou ({acomp.erro}); os números abaixo são da leitura anterior.",
+                   icon=":material/sync_problem:")
+
+    publicavel = ultima["pct_secoes"] >= MINIMO_APURADO and pd.notna(ultima["pct_a_mediana"])
+    colunas = st.columns(2)
+    for coluna, nome in zip(colunas, sorted([A["nm_urna"], B["nm_urna"]])):
+        oficial = ultima["pct_a_oficial"] if pd.notna(ultima["pct_a_oficial"]) else ultima["qt_a"] / max(
+            ultima["qt_a"] + ultima["qt_b"], 1)
+        if publicavel and not acomp.encerrado:
+            mais = pct_de(nome, ultima["pct_a_mediana"])
+            faixa = sorted([pct_de(nome, ultima["pct_a_inferior"]), pct_de(nome, ultima["pct_a_superior"])])
+            chance = pct_de(nome, ultima["prob_a_vence"])
+            detalhe = (f"projeção: {comum.pct(mais)} (margem de {comum.pct(faixa[0])} a {comum.pct(faixa[1])}) · "
+                       f"{comum.pct(chance, 0)} de chance de terminar à frente")
+        elif acomp.encerrado:
+            detalhe = "resultado com 100% das seções apuradas"
+        else:
+            detalhe = "a projeção aparece a partir de 5% das seções apuradas"
+        with coluna:
+            comum.cartao(f"{nome} · placar oficial", comum.pct(pct_de(nome, oficial), 2), detalhe, cor=CORES[nome])
+
+    if len(historico) > 1:
+        fig = go.Figure()
+        proj = historico[(historico["pct_secoes"] >= MINIMO_APURADO) & historico["pct_a_mediana"].notna()]
+        y = lambda serie: serie.map(lambda v: pct_de(PRIMEIRO, v))  # noqa: E731
+        if len(proj):
+            fig.add_trace(go.Scatter(
+                x=pd.concat([proj["momento"], proj["momento"][::-1]]),
+                y=pd.concat([y(proj["pct_a_superior"]), y(proj["pct_a_inferior"])[::-1]]),
+                fill="toself", fillcolor="rgba(235,104,52,0.14)", line=dict(width=0), hoverinfo="skip",
+                name="margem da projeção (90%)"))
+            fig.add_trace(go.Scatter(x=proj["momento"], y=y(proj["pct_a_mediana"]), mode="lines", name="projeção",
+                                     line=dict(color=PROJECAO, width=2),
+                                     hovertemplate="%{x|%H:%M}<br>projeção: %{y:.2%}<extra></extra>"))
+        fig.add_trace(go.Scatter(x=historico["momento"], y=y(historico["pct_a_oficial"]), mode="lines",
+                                 name="placar oficial", line=dict(color=PLACAR, width=2),
+                                 hovertemplate="%{x|%H:%M}<br>placar: %{y:.2%}<extra></extra>"))
+        fig.add_hline(y=0.5, line=dict(color=comum.EIXO, width=1))
+        fig.update_xaxes(tickformat="%H:%M", title="horário de Brasília")
+        outro = sorted([A["nm_urna"], B["nm_urna"]])[1]
+        fig.update_yaxes(tickformat=".1%", title=f"% de {PRIMEIRO}")
+        comum.estilo(fig, altura=380)
+        comum.mostrar(fig, fonte="TSE (resultados divulgados ao vivo); projeção calculada pelo projeto.",
+                      chave="ao_vivo")
+        st.caption(f"**Como ler:** % de {PRIMEIRO} nos votos válidos (o de {outro} é 100% menos esse valor). A linha "
+                   "azul é o placar oficial em cada momento; a laranja, a projeção, com a faixa da margem.")
+
+    por_uf = acomp.placar_ufs.copy()
+    if not por_uf.empty:
+        with st.expander("Placar e % apurado por estado"):
+            validos = (por_uf["qt_a"] + por_uf["qt_b"]).where(lambda v: v > 0)
+            tabela = pd.DataFrame({"UF": por_uf["uf"].replace({"ZZ": "Exterior"}),
+                                   "Seções apuradas": por_uf["pct_secoes"].map(lambda x: comum.pct(x, 0))})
+            for nome in sorted([A["nm_urna"], B["nm_urna"]]):
+                coluna = "qt_a" if nome == A["nm_urna"] else "qt_b"
+                tabela[nome] = (por_uf[coluna] / validos).map(lambda x: "—" if pd.isna(x) else comum.pct(x))
+            st.dataframe(tabela, hide_index=True)
+
+
+agora = datetime.now(FUSO_BRASILIA)
+if "AO_VIVO_ELEICAO" in os.environ or agora >= INICIO - timedelta(minutes=15):
+    st.subheader("2º turno de 2026")
+    painel_ao_vivo()
+else:
+    st.info(
+        "**Na noite de 25/10**, a partir do fechamento das urnas (17h, horário de Brasília), esta página vai "
+        "mostrar o placar oficial do 2º turno e a projeção, atualizados a cada minuto. Até lá, ela mostra o teste "
+        "feito com as duas apurações de 2022.",
+        icon=":material/schedule:",
+    )
 
 st.subheader("O teste: a noite de 2022 reproduzida seção por seção")
 st.markdown(
