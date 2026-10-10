@@ -1,0 +1,14 @@
+# Aparência do site (lida pelo Streamlit no seu computador e no Streamlit Community Cloud).
+[theme]
+base = "light"
+primaryColor = "#3d3c39"            # cinza-escuro: nenhum elemento da interface lembra um partido
+backgroundColor = "#fcfcfb"
+secondaryBackgroundColor = "#f3f2ee"
+textColor = "#0b0b0b"
+font = "sans serif"
+
+[server]
+headless = true
+
+[browser]
+gatherUsageStats = false

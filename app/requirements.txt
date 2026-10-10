@@ -1,0 +1,6 @@
+# Bibliotecas do site (o Streamlit Community Cloud instala estas)
+streamlit>=1.50
+pandas>=2.2
+pyarrow>=15
+plotly>=6.0
+requests>=2.31

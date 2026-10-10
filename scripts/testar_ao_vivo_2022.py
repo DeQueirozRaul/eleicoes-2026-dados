@@ -29,7 +29,7 @@ import pandas as pd
 RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(RAIZ))
 
-from eleicoes.ao_vivo import Parametros, projetar  # noqa: E402
+from eleicoes.ao_vivo import MINIMO_APURADO, Parametros, projetar  # noqa: E402
 from eleicoes.modelo_2t import ajustar, logit, preparar, prever_municipios  # noqa: E402
 
 SAIDA = RAIZ / "dados" / "apuracao"
@@ -83,7 +83,7 @@ def reproduzir(secoes: pd.DataFrame, prior: pd.DataFrame, parametros: Parametros
 
 
 def resumo(r: pd.DataFrame) -> dict:
-    depois = r[r["pct_secoes"] >= 0.02]
+    depois = r[r["pct_secoes"] >= MINIMO_APURADO]   # só os momentos em que a projeção é publicada
     marcos = {}
     for alvo in (0.05, 0.10, 0.25, 0.50, 0.75):
         linha = r.iloc[(r["pct_secoes"] - alvo).abs().argmin()]
