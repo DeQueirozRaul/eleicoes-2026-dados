@@ -9,8 +9,6 @@ font = "sans serif"
 
 [server]
 headless = true
-# serve app/static/ (o contorno do mundo que os mapas do Plotly carregam fica no próprio site)
-enableStaticServing = true
 
 [browser]
 gatherUsageStats = false

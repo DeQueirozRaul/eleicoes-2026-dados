@@ -111,10 +111,9 @@ def mostrar(fig: go.Figure, tabela: pd.DataFrame | None = None, fonte: str | Non
             chave: str | None = None) -> None:
     """Mostra o gráfico, a fonte e, num quadro que abre e fecha, a tabela com os
     mesmos números (quem não enxerga bem as cores ou quer o valor exato lê ali)."""
-    # topojsonURL: os mapas do Plotly carregam um contorno do mundo; servimos a cópia de app/static/
-    # em vez de depender de cdn.plot.ly
-    st.plotly_chart(fig, config={"displayModeBar": False, "scrollZoom": False, "topojsonURL": "/app/static/"},
-                    theme=None, key=chave)
+    # Os mapas do Plotly baixam um contorno do mundo de cdn.plot.ly (o endereço padrão).
+    # Não troque por um caminho do próprio site: no Streamlit Cloud ele não existe e os mapas somem.
+    st.plotly_chart(fig, config={"displayModeBar": False, "scrollZoom": False}, theme=None, key=chave)
     if fonte:
         st.caption(f"Fonte: {fonte}")
     if tabela is not None:
