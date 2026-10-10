@@ -12,6 +12,8 @@ seção: a projeção ficou do lado do vencedor desde 5% apurado, mais de uma ho
 antes de o placar oficial virar (o mesmo aconteceu no 1º turno).
 [Como funciona](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração).*
 
+**Para rodar no seu computador:** [passo a passo](docs/como_rodar.md).
+
 ## ⚖️ Compromisso de neutralidade
 
 Este é um projeto **apartidário**. Ele não apoia, critica nem faz campanha
@@ -37,17 +39,41 @@ para nenhum candidato, partido ou campo político. Na prática:
 
 ## Quão bem funciona (e quanto erra)
 
-Toda análise é testada contra dados reais antes de ser usada:
+Toda análise foi testada contra dados reais antes de ser usada.
 
-| Análise | Como foi testada | Resultado |
+> **Como ler os números:** "ponto" (ou ponto percentual) é a diferença entre duas
+> porcentagens. Se a projeção dizia 50,4% e o resultado final foi 50,9%, o erro
+> foi de **0,5 ponto**.
+
+| Análise | Como testamos | Resultado |
 |---|---|---|
-| Coletor ao vivo | soma dos 5.757 municípios × total nacional (1º turno de 2026) | 0 votos de diferença |
-| Base histórica (2002–2022) | soma dos candidatos × votos válidos, município a município | 0 diferenças (exceto 18.876 votos sem explicação nos arquivos de 2006, 0,02%) |
-| Previsão do 2º turno antes da eleição | cada eleição de 2002 a 2022 prevista com as outras cinco | erro nacional mediano de 1,5 ponto (médio 2,6; pior caso 8,7, em 2006); 3,1 pontos por município; resultado dentro do intervalo de 90% em 5 de 6 |
-| Cenários de transferência dos eliminados | mesmo teste, de 2006 a 2022 | erro médio de 3,4 pontos, pior que o modelo principal (2,7); por isso fica só como cenário |
-| Reprodução da apuração de 2022 | curva reproduzida × histórico oficial de totalização | 0,4 ponto no % apurado e 0,07 ponto no % do candidato |
-| Previsão ao vivo, 2º turno de 2022 | erro em relação ao resultado final | 0,5 ponto com 10% apurado (placar oficial: 2,9); 0,6 com 50% (placar: 1,2); final dentro do intervalo de 90% em 93% dos momentos |
-| Previsão ao vivo, 1º turno de 2022 | erro em relação ao resultado final | 0,7 ponto com 10% apurado (placar oficial: 5,8); 0,4 com 50% (placar: 3,8); final dentro do intervalo em 100% dos momentos |
+| **Coletor ao vivo** | Somamos os votos dos 5.757 municípios e comparamos com o total do Brasil divulgado pelo TSE (1º turno de 2026). | Bateu exatamente: nenhum voto de diferença. |
+| **Base histórica (2002–2022)** | Em cada município, conferimos se a soma dos votos dos candidatos é igual ao total de votos válidos. | Bateu em todos os municípios. Única exceção: 18.876 votos de 2006 que não fecham nos próprios arquivos do TSE (0,02% do total). |
+| **Previsão do 2º turno antes da eleição** | "Escondemos" o resultado de cada eleição de 2002 a 2022 e tentamos prevê-lo usando só as outras cinco. | Em metade das eleições o erro foi de até 1,5 ponto; no pior caso (2006), 8,7 pontos. O resultado real ficou dentro da margem de erro do modelo em 5 das 6 eleições. |
+| **Cenários de transferência dos eliminados** | O mesmo teste, de 2006 a 2022. | Errou em média 3,4 pontos, mais que o modelo principal (2,7). Por isso é usado só para montar cenários, não como previsão. |
+| **Reprodução da apuração de 2022** | Reconstruímos a noite da apuração urna por urna e comparamos, minuto a minuto, com o registro oficial do TSE. | Quase idêntica: diferença média de 0,4 ponto no total de urnas apuradas e de 0,07 ponto no placar. |
+| **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Em 93% das atualizações, o resultado final estava dentro da margem de erro da projeção. |
+| **Previsão ao vivo: 1º turno de 2022** | O mesmo teste, com o placar entre LULA e JAIR BOLSONARO. | Com 10% apurado: **0,7 ponto** de erro, contra **5,8** do placar oficial. Com metade apurada: 0,4 contra 3,8. O resultado final esteve dentro da margem de erro em 100% das atualizações. |
+| **Leitura dos votos digitados na urna (RDV)** | Nas 9 disputas de Governador analisadas, somamos os votos de cada candidato lidos voto a voto no RDV e comparamos com o resultado oficial. | Bateu exatamente em 6 disputas; nas outras 3, diferença de no máximo 0,02% (uma urna ilegível no RS e votos em candidaturas indeferidas em SC e na BA). |
+
+## Destaque: votos para Governador anulados com o número de um presidenciável
+
+Quem digita para Governador o número de um candidato a Presidente (por exemplo, 13 ou 22) e
+não existe candidato a Governador com esse número no estado tem o voto anulado.
+O TSE publica o registro de cada voto digitado (RDV), então dá para contar.
+
+Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
+
+- **Em 7 das 9**, esses votos eram mais do que os que bastariam para mudar o
+  resultado. Exemplo: no DF em 2026, faltaram 2.177 votos para a disputa
+  terminar no 1º turno, e 30.034 votos foram anulados assim.
+- Supondo que cada eleitor queria votar no candidato da coligação do partido
+  daquele número, **o resultado mudaria em 4** (DF, AC, ES e PR, todas em 2026,
+  nos dois sentidos).
+- O RDV não diz a intenção do eleitor e **o resultado oficial é o do TSE**; a
+  análise mede quanto a confusão entre números pesa em disputas apertadas.
+
+[Tabela completa, método e ressalvas](docs/nulos.md).
 
 ## Dificuldades e aprendizados
 
@@ -77,6 +103,11 @@ Toda análise é testada contra dados reais antes de ser usada:
   horas, porque os municípios pequenos apuram primeiro e votaram diferente das
   capitais. Cada falha virou um ajuste documentado em
   [docs/previsao.md](docs/previsao.md).
+- **Arquivo binário sem leitor pronto.** O RDV vem em ASN.1 (formato binário)
+  e o formato mudou entre 2022 e 2026 (nome do arquivo e posição da lista de
+  votos). Uma leitura errada derrubou horas de processamento; agora valores
+  impossíveis são rejeitados, a leitura é salva em partes e a soma é sempre
+  conferida com o resultado oficial.
 - **Cuidado para não se enganar.** Os testes de 2022 já ajudaram a desenhar a
   previsão ao vivo. O teste realmente independente será a noite de 25/10/2026,
   e o resultado será publicado aqui, acertando ou errando.
@@ -86,7 +117,7 @@ Toda análise é testada contra dados reais antes de ser usada:
 | Fonte | O que usamos |
 |---|---|
 | [Resultados do TSE](https://resultados.tse.jus.br) (JSON ao vivo) | Apuração minuto a minuto, por município |
-| [Portal de Dados Abertos do TSE](https://dadosabertos.tse.jus.br) | Candidatos, bens, prestação de contas, eleitorado, votação por seção, boletins de urna e histórico da totalização (2014 a 2026) |
+| [Portal de Dados Abertos do TSE](https://dadosabertos.tse.jus.br) | Candidatos, bens, prestação de contas, eleitorado, votação por seção, boletins de urna, registro digital do voto (RDV) e histórico da totalização (2014 a 2026) |
 | IBGE | População, Censo 2022, PIB municipal |
 
 Códigos das eleições de 2026 nos arquivos ao vivo:
@@ -111,38 +142,26 @@ dados/             dados baixados e gerados (fora do git; recriados pelos script
 
 ## Como rodar
 
-```bash
+**Passo a passo completo, pensado para Windows: [docs/como_rodar.md](docs/como_rodar.md).**
+
+Resumo:
+
+```bat
 python -m venv .venv
-source .venv/bin/activate          # no Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
+.venv\Scripts\python -m pip install -r requirements-dev.txt
 
-# 1. resultado do 1º turno de 2026 para Presidente, município a município (~2 min)
-python scripts/coletar_ao_vivo.py --eleicao 6257 --cargo 1
+:: essencial (~5 min): 1º turno de 2026, histórico, banco, previsão e cenários
+.venv\Scripts\python scripts\rodar_tudo.py
 
-# 2. resultados presidenciais de 2002 a 2022 (só os arquivos nacionais, ~15 s)
-python scripts/baixar_historico.py
+:: tudo (1h30 a 2h): também as apurações de 2022, gráficos e votos nulos nas disputas apertadas
+.venv\Scripts\python scripts\rodar_tudo.py --completo
 
-# 3. monta o banco dados/eleicoes.duckdb e roda as checagens de qualidade
-python scripts/montar_base.py
-
-# 4. valida o modelo nas eleições passadas e gera a previsão do 2º turno de 2026
-python scripts/prever_2t.py
-
-# 5. de onde vieram os eleitores dos eliminados e cenários de transferência
-python scripts/cenarios_transferencia.py
-
-# 6. teste da previsão ao vivo reproduzindo as apurações de 2022
-python scripts/baixar_boletins_2022.py --turno 2    # e --turno 1 (~1,2 GB de download)
-python scripts/reproduzir_apuracao_2022.py
-python scripts/testar_ao_vivo_2022.py --turno 2     # e --turno 1
-python scripts/grafico_apuracao_2022.py
-
-# na noite do 2º turno (25/10), em dois terminais:
-python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
-python scripts/previsao_ao_vivo.py --eleicao 6258 --intervalo 60
-
-pytest
+:: testes automáticos
+.venv\Scripts\python -m pytest
 ```
+
+Os resultados ficam em `dados\` e, prontos para Excel e Power BI, em `dados\exportar\`.
+No Linux e no Mac, troque `.venv\Scripts\python` por `.venv/bin/python`.
 
 O banco `dados/eleicoes.duckdb` tem as tabelas:
 
@@ -179,6 +198,8 @@ order by m.regiao, pct desc;
       eleitores estimada por inferência ecológica ([resultados](docs/previsao.md#cenários-para-onde-vão-os-eleitores-dos-eliminados))
 - [x] Previsão ao vivo durante a apuração, testada reproduzindo as duas
       apurações de 2022 seção por seção ([resultados](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração))
+- [x] Votos para Governador anulados com número de presidenciável nas disputas
+      apertadas, contados voto a voto no RDV ([resultados](docs/nulos.md))
 - [ ] Análises: resultados, perfil dos candidatos, patrimônio, eleitorado,
       dinheiro de campanha
 - [ ] Recorte do Distrito Federal
