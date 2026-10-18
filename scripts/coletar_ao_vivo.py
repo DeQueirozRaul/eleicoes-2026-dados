@@ -24,6 +24,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -34,25 +35,46 @@ PASTA_PADRAO = Path(__file__).resolve().parents[1] / "dados" / "ao_vivo"
 
 def varrer(cliente: ClienteTSE, eleicao: int, cargo: int, ufs: list[str],
            anterior: dict, paralelos: int) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, dict]:
-    """Faz uma varredura e devolve (andamento, resumos, candidatos, estado)."""
-    andamentos = [a for uf in ufs if (a := cliente.andamento(eleicao, uf)) is not None]
+    """Faz uma varredura e devolve (andamento, resumos, candidatos, estado).
+
+    Uma UF ou um município que o TSE recusar nesta varredura (ex.: 403 passageiro)
+    não derruba a coleta: fica como estava e é pedido de novo na próxima."""
+    andamentos = [a for uf in ufs if (a := andamento_ou_nada(cliente, eleicao, uf)) is not None]
     if not andamentos:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), anterior
     andamento = pd.concat(andamentos, ignore_index=True)
 
     municipios = andamento[andamento["tp_abrangencia"] == "mun"]
-    estado = {
+    novos = {
         (m.uf, m.cd_abrangencia): (m.qt_secoes_totalizadas, m.dt_totalizacao)
         for m in municipios.itertuples()
     }
     mudaram = [
-        chave for chave, valor in estado.items()
+        chave for chave, valor in novos.items()
         if valor[0] > 0 and anterior.get(chave) != valor
     ]
 
     alvos = [("br", "")] + [(uf, "") for uf in ufs] + mudaram
     resumos, candidatos = cliente.resultados(eleicao, cargo, alvos, paralelos=paralelos)
+
+    # só conta como "já baixado" o município cujo resultado chegou de fato
+    baixados = set() if resumos.empty else set(zip(resumos["uf"], resumos["cd_municipio_tse"]))
+    estado = {**anterior, **novos}
+    for chave in mudaram:
+        if chave not in baixados:
+            if chave in anterior:
+                estado[chave] = anterior[chave]
+            else:
+                del estado[chave]
     return andamento, resumos, candidatos, estado
+
+
+def andamento_ou_nada(cliente: ClienteTSE, eleicao: int, uf: str) -> pd.DataFrame | None:
+    try:
+        return cliente.andamento(eleicao, uf)
+    except requests.RequestException as erro:
+        print(f"   {uf}: o TSE recusou o andamento ({erro}); tento de novo na próxima varredura")
+        return None
 
 
 def salvar(pasta: Path, momento: datetime, andamento: pd.DataFrame,
@@ -84,9 +106,16 @@ def main() -> None:
     while True:
         inicio = time.monotonic()
         momento = datetime.now(FUSO_BRASILIA)
-        andamento, resumos, candidatos, estado = varrer(
-            cliente, args.eleicao, args.cargo, [uf.lower() for uf in args.ufs], estado, args.paralelos
-        )
+        try:
+            andamento, resumos, candidatos, estado = varrer(
+                cliente, args.eleicao, args.cargo, [uf.lower() for uf in args.ufs], estado, args.paralelos
+            )
+        except Exception as erro:  # noqa: BLE001 - na noite da eleição, o coletor não pode parar
+            print(f"{momento:%H:%M:%S} falha na varredura ({type(erro).__name__}: {erro}); tento de novo")
+            if not args.intervalo:
+                raise
+            time.sleep(args.intervalo)
+            continue
         if andamento.empty:
             print(f"{momento:%H:%M:%S} nenhum dado publicado ainda para a eleição {args.eleicao}")
         else:
