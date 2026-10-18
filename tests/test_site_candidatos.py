@@ -140,9 +140,13 @@ def test_valor_reais_com_virgula_decimal():
     assert valores.tolist() == [29000.0, 1234567.89, 0.0, 0.0]
 
 
+def sidra(*meses):
+    """Resposta do SIDRA: cabeçalho + uma linha por (AAAAMM, variação %)."""
+    return [{"V": "Valor", "D3C": "Mês (Código)"}] + [{"V": v, "D3C": m} for m, v in meses]
+
+
 def test_ipca_acumula_e_leva_agosto_para_a_referencia():
-    serie = [{"data": "01/08/2018", "valor": "0.00"}, {"data": "01/09/2018", "valor": "10.00"},
-             {"data": "01/08/2022", "valor": "10.00"}, {"data": "01/08/2026", "valor": "0.00"}]
+    serie = sidra(("201808", "0.00"), ("201809", "10.00"), ("202208", "10.00"), ("202608", "0.00"), ("202609", "..."))
     indice = indice_ipca(serie)
     assert indice.iloc[-1] == pytest.approx(1.21)
     fatores, referencia = fatores_ipca(indice, [2018, 2022, 2026])
@@ -153,7 +157,7 @@ def test_ipca_acumula_e_leva_agosto_para_a_referencia():
 
 
 def test_ipca_usa_o_ultimo_mes_se_agosto_ainda_nao_saiu():
-    serie = [{"data": "01/08/2022", "valor": "0.00"}, {"data": "01/07/2026", "valor": "5.00"}]
+    serie = sidra(("202208", "0.00"), ("202607", "5.00"))
     fatores, referencia = fatores_ipca(indice_ipca(serie), [2022, 2026])
     assert referencia == pd.Timestamp(2026, 7, 1)
     assert fatores[2026] == pytest.approx(1.0)

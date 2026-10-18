@@ -158,8 +158,9 @@ st.caption(
 
 # --- ressalvas -------------------------------------------------------------------
 st.subheader("Ressalvas")
+exatas = int((d["diferenca_rdv_oficial"] == 0).sum())
 st.markdown(
-    """
+    f"""
 - **O RDV não diz a intenção.** Parte desses votos pode ser nulo de propósito. A hipótese da coligação é só um
   cenário, não uma afirmação sobre o que o eleitor queria.
 - **Só dá para ver a confusão que virou nulo.** Se o número digitado era de um candidato a Governador existente, o
@@ -167,7 +168,8 @@ st.markdown(
 - **Voto nulo é uma escolha legítima e o resultado oficial é o do TSE.** A análise mede quanto a confusão entre os
   números de cargos diferentes pesa em disputas apertadas; não questiona o resultado.
 - **A contagem confere com o oficial:** os votos de cada candidato contados no RDV bateram com o resultado do TSE
-  (diferença zero em 6 disputas e de no máximo 0,02% nas outras 3; detalhes na página Conferência dos dados).
+  (diferença zero em {exatas} disputas e de no máximo 0,02% nas outras {len(d) - exatas}; detalhes na página
+  Conferência dos dados).
 """
 )
 comum.rodape("docs/nulos.md")

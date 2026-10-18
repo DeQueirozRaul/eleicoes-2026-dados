@@ -18,8 +18,10 @@ Fontes (todas públicas):
 - Censo 2022 do IBGE, tabela 10061 do SIDRA ("Pessoas de 18 anos ou mais de
   idade, por nível de instrução, segundo os grupos de idade, o sexo e a cor ou raça"):
     https://apisidra.ibge.gov.br/values/t/10061/n1/all/v/2667/p/2022/...
-- IPCA mensal, Banco Central, série SGS 433:
-    https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial=01/01/2018
+- IPCA mensal (variação %), IBGE, tabela 1737 do SIDRA. Antes vinha da série 433 do
+  Banco Central, que passou a recusar os pedidos automáticos em out/2026; o IBGE é
+  quem calcula o IPCA, então os números são os mesmos:
+    https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/all
 
 Critérios (repetidos nas páginas):
 - "Foi a voto": a candidatura estava na urna e os votos foram contados como
@@ -74,7 +76,7 @@ SAIDA = RAIZ / "app" / "dados"
 ANOS = [2018, 2022, 2026]
 DATA_ELEICAO = {2018: "2018-10-07", 2022: "2022-10-02", 2026: "2026-10-04"}
 URL_SIDRA = "https://apisidra.ibge.gov.br/values/t/10061/n1/all/v/2667/p/2022"
-URL_IPCA = "https://api.bcb.gov.br/dados/serie/bcdata.sgs.433/dados?formato=json&dataInicial=01/01/2018"
+URL_IPCA = "https://apisidra.ibge.gov.br/values/t/1737/n1/all/v/63/p/all"
 PARALELOS = 3  # o TSE devolve 403 com muitas conexões ao mesmo tempo
 
 # Cargos analisados (vices e suplentes ficam de fora). Estadual e distrital juntos:
@@ -278,10 +280,13 @@ def valor_reais(texto: pd.Series) -> pd.Series:
                          .str.replace(",", ".", regex=False), errors="coerce").fillna(0.0)
 
 
-def indice_ipca(serie: list[dict]) -> pd.Series:
-    """Número-índice mensal a partir das variações % do IPCA (série SGS 433)."""
-    variacao = pd.Series([float(x["valor"]) for x in serie],
-                         index=pd.to_datetime([x["data"] for x in serie], format="%d/%m/%Y"))
+def indice_ipca(sidra: list[dict]) -> pd.Series:
+    """Número-índice mensal a partir das variações % do IPCA (SIDRA, tabela 1737,
+    variável 63). A 1ª linha da resposta do SIDRA é o cabeçalho; meses sem valor
+    ("..." ou "-") ficam de fora."""
+    linhas = [x for x in sidra[1:] if x["V"] not in ("...", "-", "", "X")]
+    variacao = pd.Series([float(x["V"]) for x in linhas],
+                         index=pd.to_datetime([x["D3C"] for x in linhas], format="%Y%m"))
     return (1 + variacao.sort_index() / 100).cumprod()
 
 
@@ -341,6 +346,13 @@ def baixar(url: str, destino: Path, sessao: requests.Session, atualizar: bool = 
         try:
             resposta = sessao.get(url, timeout=180)
             resposta.raise_for_status()
+            if destino.suffix == ".json":
+                # alguns servidores respondem 200 com uma página de erro em HTML:
+                # só troca o arquivo bom se a resposta for JSON de verdade
+                try:
+                    json.loads(resposta.content)
+                except ValueError:
+                    raise requests.RequestException(f"resposta não é JSON: {resposta.text[:80]!r}")
             parcial = destino.with_name(destino.name + ".parcial")
             parcial.write_bytes(resposta.content)
             parcial.replace(destino)
@@ -373,7 +385,7 @@ def baixar_tudo(atualizar: bool) -> None:
         tarefas.append((f"{BASE_URL}/{caminho}", BRUTOS / "resultados_2026" / Path(caminho).name))
     for nome, filtro in CONSULTAS_SIDRA.items():
         tarefas.append((f"{URL_SIDRA}/{filtro}", BRUTOS / "ibge" / f"censo2022_t10061_{nome}.json"))
-    tarefas.append((URL_IPCA, BRUTOS / "ipca_sgs433.json"))
+    tarefas.append((URL_IPCA, BRUTOS / "ipca_sidra1737.json"))
 
     with ThreadPoolExecutor(max_workers=PARALELOS) as executor:
         list(executor.map(lambda t: baixar(*t, sessao=sessao, atualizar=atualizar), tarefas))
@@ -814,7 +826,7 @@ def main() -> None:
     print(f"{(BRUTOS / 'candidaturas.parquet').relative_to(RAIZ)}: {len(powerbi)} candidaturas "
           f"({powerbi.groupby('ano').size().to_dict()}), {int(powerbi['eleito'].sum())} eleitos")
 
-    indice = indice_ipca(json.loads((BRUTOS / "ipca_sgs433.json").read_text(encoding="utf-8")))
+    indice = indice_ipca(json.loads((BRUTOS / "ipca_sidra1737.json").read_text(encoding="utf-8")))
     fatores, referencia = fatores_ipca(indice, ANOS)
 
     SAIDA.mkdir(parents=True, exist_ok=True)

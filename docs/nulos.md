@@ -73,8 +73,16 @@ Entraram as disputas em que isso era **menos de 1,5% dos votos válidos**
 
 ## Resultados
 
-Das 66 disputas de Governador analisadas, **9** puderam ser mudadas com menos de
-1,5% dos votos válidos. As 9, da mais apertada para a menos apertada:
+> **Atualização (18/10/2026):** em 10/10, depois da primeira versão desta análise, o
+> TSE refez a totalização de Governador do Rio de Janeiro: os votos de GAROTINHO
+> deixaram de ser válidos. DOUGLAS RUAS passou a ter 50,9% dos válidos e foi eleito
+> no 1º turno. Para haver 2º turno seriam necessários 147.771 votos (1,8% dos
+> válidos), acima do limite de 1,5%, e o RJ saiu da lista (eram 9 disputas, agora
+> são 8). No RJ, os votos anulados com número de presidenciável (216.497) continuam
+> maiores do que esses 147.771.
+
+Das 66 disputas de Governador analisadas, **8** puderam ser mudadas com menos de
+1,5% dos votos válidos. As 8, da mais apertada para a menos apertada:
 
 | Disputa | Resultado oficial | Votos que bastariam para mudar o resultado | Votos anulados com número de presidenciável | Eram suficientes para mudar? | Na hipótese da coligação |
 |---|---|---|---|---|---|
@@ -86,7 +94,6 @@ Das 66 disputas de Governador analisadas, **9** puderam ser mudadas com menos de
 | DF 2022 | IBANEIS ROCHA venceu no 1º turno | 10.223 para haver 2º turno | 37.274 | **Sim** | Não mudaria |
 | ES 2026 | 2º turno entre LORENZO PAZOLINI e RICARDO FERRAÇO | 14.905 para LORENZO PAZOLINI vencer no 1º turno | 52.704 | **Sim** | **Mudaria:** LORENZO PAZOLINI venceria no 1º turno |
 | BA 2022 | 2º turno entre ACM NETO e JERÔNIMO | 89.382 para JERÔNIMO vencer no 1º turno | 49.465 | Não | Não mudaria |
-| RJ 2026 | 2º turno entre DOUGLAS RUAS e EDUARDO PAES | 126.640 para DOUGLAS RUAS vencer no 1º turno | 216.497 | **Sim** | Não mudaria |
 
 **Como ler uma linha (DF 2026):** CELINA LEÃO teve 49,93% dos votos válidos;
 faltaram **2.177 votos** para passar de 50% e vencer no 1º turno. Nas urnas,
@@ -98,11 +105,11 @@ do PL, que estava na coligação de CELINA LEÃO), ela venceria no 1º turno.
 
 **Em resumo:**
 
-- **Em 7 das 9 disputas**, os votos anulados com número de presidenciável eram
+- **Em 6 das 8 disputas**, os votos anulados com número de presidenciável eram
   mais do que os votos que bastariam para mudar o resultado. Nas outras duas
   (SC 2022 e BA 2022), nem que todos fossem para o mesmo candidato o resultado
   mudaria.
-- **Na hipótese da coligação, o resultado mudaria em 4 das 9, todas de 2026,**
+- **Na hipótese da coligação, o resultado mudaria em 4 das 8, todas de 2026,**
   nos dois sentidos: no DF, no AC e no ES a disputa terminaria no 1º turno em
   vez de ir ao 2º; no PR, iria ao 2º turno em vez de terminar no 1º.
 - O fenômeno foi maior em 2026 (de 1,7% a 6,4% de todos os votos para
@@ -128,11 +135,10 @@ número digitado (os quatro mais frequentes):
 | DF 2022 | 1.807.484 | 2,1% | 13: 18.456, 22: 17.135, 44: 1.077, 30: 521 |
 | ES 2026 | 2.348.612 | 2,2% | 22: 45.222, 55: 3.506, 70: 2.348, 30: 388 |
 | BA 2022 | 8.866.018 | 0,6% | 12: 26.700, 15: 15.783, 14: 4.631, 16: 676 |
-| RJ 2026 | 9.845.867 | 2,2% | 13: 204.309, 70: 7.294, 21: 2.885, 35: 1.306 |
 
 ### Conferência com o resultado oficial
 
-Em todas as 9 disputas, os votos de cada candidato contados no RDV bateram com o
-resultado oficial do TSE: diferença zero em 6 e, nas outras três, no máximo 0,02%
+Em todas as 8 disputas, os votos de cada candidato contados no RDV bateram com o
+resultado oficial do TSE: diferença zero em 5 e, nas outras três, no máximo 0,02%
 dos votos (RS: −98; SC: +829; BA: +427; explicações nas ressalvas acima). Os
 números completos ficam em `dados/nulos/nulos_disputas_apertadas.csv`.

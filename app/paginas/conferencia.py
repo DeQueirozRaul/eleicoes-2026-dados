@@ -218,9 +218,10 @@ comum.mostrar(fig, tabela=tabela_noite("pct_a"),
 # 3. RDV × oficial
 # ---------------------------------------------------------------------------
 st.header("3. A leitura voto a voto (RDV) bate com o resultado oficial?", anchor="rdv")
+rdv = comum.ler("conferencia_rdv")
 st.markdown(
     "Para a análise dos votos no número errado, o projeto leu o **Registro Digital do Voto (RDV)** de todas as "
-    "urnas de 9 disputas para Governador. O RDV é o arquivo em que a urna guarda cada voto digitado, embaralhado "
+    f"urnas de {len(rdv)} disputas para Governador. O RDV é o arquivo em que a urna guarda cada voto digitado, embaralhado "
     "e sem identificar o eleitor. Antes de usar a leitura, conferimos: a soma dos votos de cada candidato no "
     "RDV tem de bater com o resultado oficial."
 )
