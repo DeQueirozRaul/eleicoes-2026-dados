@@ -160,12 +160,20 @@ def sql_agregar_perfil(csv: Path) -> str:
     """
 
 
+def coluna_escolaridade(csv: Path) -> str:
+    """O código de instrução se chama CD_GRAU_ESCOLARIDADE até 2022 e CD_GRAU_INSTRUCAO
+    em 2026 (os códigos, de 0 a 8, são os mesmos)."""
+    with open(csv, encoding="latin-1") as arquivo:
+        cabecalho = arquivo.readline()
+    return "CD_GRAU_INSTRUCAO" if '"CD_GRAU_INSTRUCAO"' in cabecalho else "CD_GRAU_ESCOLARIDADE"
+
+
 def sql_agregar_abstencao(csv: Path) -> str:
     """Aptos, comparecimento e abstenção por turno, UF, gênero, faixa etária e instrução."""
     return f"""
         select ANO_ELEICAO::int as ano, NR_TURNO::int as turno, SG_UF as uf,
                CD_GENERO::int as cd_genero, CD_FAIXA_ETARIA::int as cd_faixa, trim(DS_FAIXA_ETARIA) as ds_faixa,
-               CD_GRAU_ESCOLARIDADE::int as cd_escolaridade,
+               {coluna_escolaridade(csv)}::int as cd_escolaridade,
                sum(QT_APTOS::bigint) as qt_aptos, sum(QT_COMPARECIMENTO::bigint) as qt_comparecimento,
                sum(QT_ABSTENCAO::bigint) as qt_abstencao, min(DT_GERACAO) as dt_geracao
         from read_csv('{csv.as_posix()}', delim=';', encoding='latin-1', all_varchar=true, header=true)
@@ -302,8 +310,14 @@ def conectar() -> duckdb.DuckDBPyConnection:
             from read_parquet('{(BRUTOS / f"perfil_{ano}").as_posix()}/*.parquet')""")
     con.execute("create view perfil as " + " union all ".join(f"select * from perfil_{a}" for a in ANOS_PERFIL))
     anos = [a for a in ANOS_ABSTENCAO if (BRUTOS / f"abstencao_{a}" / "completo.txt").exists()]
-    con.execute("create view abstencao as " + " union all ".join(
+    # O TSE publica o turno seguinte já preenchido antes da eleição (todos "comparecem",
+    # abstenção zero): um turno sem nenhuma abstenção registrada ainda não aconteceu.
+    con.execute("create view abstencao_bruta as " + " union all ".join(
         f"select * from read_parquet('{(BRUTOS / f'abstencao_{a}').as_posix()}/*.parquet')" for a in anos))
+    con.execute("""
+        create view abstencao as
+        select * from abstencao_bruta
+        where (ano, turno) in (select ano, turno from abstencao_bruta group by all having sum(qt_abstencao) > 0)""")
     con.execute(f"create view transferencia as select * from "
                 f"read_parquet('{(BRUTOS / 'transferencia_2026').as_posix()}/*.parquet')")
     codigos = con.sql("select distinct cd_faixa from perfil union select distinct cd_faixa from abstencao").df()

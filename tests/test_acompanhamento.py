@@ -1,4 +1,5 @@
 import pandas as pd
+import requests
 
 from eleicoes.acompanhamento import Acompanhamento
 from eleicoes.tse_ao_vivo import Resultado
@@ -32,7 +33,7 @@ class ClienteFalso:
     def resultado(self, eleicao, cargo, uf="br", municipio=""):
         if municipio in self.falhar:
             self.falhar.discard(municipio)
-            return None
+            raise requests.HTTPError("403 Forbidden")   # recusa passageira do servidor do TSE
         self.baixados.append(municipio)
         votos = {"001": (600, 300), "002": (100, 300), "": (700, 600)}[municipio]
         candidatos = pd.DataFrame({"nr_candidato": ["22", "13"], "qt_votos": list(votos)})
@@ -71,6 +72,7 @@ def test_falha_no_download_nao_avanca_o_apurado():
     cliente.falhar = {"002"}
     r = acomp.rodar_uma_vez()
     assert r.pct_secoes == 0.5                       # o eleitorado de 002 só conta junto com os votos
+    assert r.falhas == 1
     r = acomp.rodar_uma_vez()                        # na rodada seguinte o download funciona
     assert r.pct_secoes == 0.75 and r.qt_b == 600
 
@@ -81,3 +83,21 @@ def test_antes_de_publicar_nao_ha_rodada():
     acomp = acompanhamento(cliente)
     assert acomp.rodar_uma_vez() is None
     assert not acomp.publicado
+
+
+def test_andamento_recusado_nao_derruba_a_rodada():
+    cliente = ClienteFalso()
+    acomp = acompanhamento(cliente)
+    acomp.rodar_uma_vez()
+    original = cliente.andamento
+
+    def recusa(eleicao, uf):
+        if uf == "sp":
+            raise requests.HTTPError("403 Forbidden")
+        return original(eleicao, uf)
+
+    cliente.andamento = recusa
+    assert acomp.rodar_uma_vez() is None             # nada chegou nesta rodada: o histórico não muda
+    assert len(acomp.tabela_historico()) == 1
+    cliente.andamento = original
+    assert acomp.rodar_uma_vez() is not None

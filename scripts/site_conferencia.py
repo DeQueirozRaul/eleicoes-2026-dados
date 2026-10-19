@@ -8,7 +8,7 @@ A página mostra que o projeto confere os dados antes de concluir:
    vem dos arquivos de resultado do TSE).
 2. Reprodução da apuração de 2022 × histórico oficial de totalização
    (lê dados/apuracao/comparacao_curva_2022.csv, de scripts/reproduzir_apuracao_2022.py).
-3. Leitura voto a voto (RDV) × resultado oficial nas 9 disputas de Governador
+3. Leitura voto a voto (RDV) × resultado oficial nas disputas de Governador mais apertadas
    (lê dados/nulos/nulos_disputas_apertadas.csv, de scripts/nulos_disputas_apertadas.py).
 4. Lei de Benford: 1º e 2º dígito dos votos por seção e por município, para
    todos os candidatos, comparados com a curva de Benford.

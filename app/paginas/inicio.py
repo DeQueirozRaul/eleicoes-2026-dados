@@ -75,7 +75,7 @@ Toda análise foi testada com dados reais antes de ser publicada. Alguns resulta
   o resultado real ficou dentro da margem de erro em 5 das 6.
 - **A projeção ao vivo, testada na noite de 2022:** com 10% das urnas apuradas, errava o resultado final por
   0,5 ponto, enquanto o placar oficial naquele momento estava 2,9 pontos longe do final.
-- **A leitura voto a voto (RDV)** bate com o resultado oficial nas 9 disputas analisadas.
+- **A leitura voto a voto (RDV)** bate com o resultado oficial nas disputas de Governador analisadas.
 
 "Ponto" é a diferença entre duas porcentagens: se a projeção dizia 50,4% e o resultado foi 50,9%, o erro foi de
 0,5 ponto.

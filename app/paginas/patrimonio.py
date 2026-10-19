@@ -12,7 +12,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 FONTE = "TSE, Portal de Dados Abertos (candidatos e bens de candidatos) e resultados do 1º turno de 2026"
-FONTE_IPCA = FONTE + "; IPCA do IBGE (série 433 do Banco Central)"
+FONTE_IPCA = FONTE + "; IPCA do IBGE (SIDRA, tabela 1737)"
 ORDEM_CARGOS = ["Presidente", "Governador", "Senador", "Deputado Federal", "Deputado Estadual ou Distrital"]
 ORDEM_BENS = ["Imóveis", "Aplicações e dinheiro", "Participações em empresas", "Veículos, barcos e aviões",
               "Criptoativos", "Outros bens e direitos"]

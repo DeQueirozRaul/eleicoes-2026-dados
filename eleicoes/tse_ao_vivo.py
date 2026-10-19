@@ -244,11 +244,17 @@ class ClienteTSE:
         """Baixa vários resultados (lista de (uf, municipio)) em paralelo.
 
         Devolve (resumos, candidatos), com as colunas `uf` e
-        `cd_municipio_tse` identificando cada abrangência.
+        `cd_municipio_tse` identificando cada abrangência. Arquivos que falharem
+        ficam de fora (não aparecem em `resumos`).
         """
         def um(alvo):
             uf, mun = alvo
-            return uf, mun, self.resultado(eleicao, cargo, uf, mun)
+            try:
+                return uf, mun, self.resultado(eleicao, cargo, uf, mun)
+            except requests.RequestException:
+                # o TSE às vezes recusa um arquivo (ex.: 403 passageiro); quem chamou
+                # percebe a falta dele no resultado e pede de novo depois
+                return uf, mun, None
 
         resumos, candidatos = [], []
         with ThreadPoolExecutor(max_workers=paralelos) as executor:

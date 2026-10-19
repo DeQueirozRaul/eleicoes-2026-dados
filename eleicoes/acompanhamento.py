@@ -24,6 +24,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+import requests
 
 from eleicoes.ao_vivo import Parametros, projetar
 from eleicoes.tse_ao_vivo import FUSO_BRASILIA, UFS, ClienteTSE
@@ -44,6 +45,7 @@ class Rodada:
     pct_a_superior: float | None = None
     prob_a_vence: float | None = None
     municipios_com_votos: int = 0
+    falhas: int = 0                   # arquivos que o TSE recusou nesta rodada (tentados de novo na próxima)
 
 
 @dataclass
@@ -72,16 +74,28 @@ class Acompanhamento:
         self.encerrado = False
         self._trava = threading.Lock()
         self._linha: threading.Thread | None = None
+        self._falhas = 0
 
     # --- coleta ------------------------------------------------------------
+    def _seguro(self, funcao, *args):
+        """Chama o TSE sem deixar uma falha derrubar a rodada. O servidor do TSE às vezes
+        recusa um arquivo (ex.: 403 passageiro); ele vira None e é pedido de novo na
+        próxima rodada."""
+        try:
+            return funcao(*args)
+        except requests.RequestException:
+            with self._trava:
+                self._falhas += 1
+            return None
+
     def _andamentos(self) -> pd.DataFrame:
         with ThreadPoolExecutor(max_workers=self.paralelos) as executor:
-            partes = [a for a in executor.map(lambda uf: self.cliente.andamento(self.eleicao, uf), UFS)
-                      if a is not None]
+            partes = [a for a in executor.map(
+                lambda uf: self._seguro(self.cliente.andamento, self.eleicao, uf), UFS) if a is not None]
         return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
 
     def _votos(self, uf: str, municipio: str) -> tuple[str, str, int, int] | None:
-        r = self.cliente.resultado(self.eleicao, self.cargo, uf, municipio)
+        r = self._seguro(self.cliente.resultado, self.eleicao, self.cargo, uf, municipio)
         if r is None or r.candidatos.empty:
             return None
         numeros = r.candidatos["nr_candidato"].astype(int)
@@ -92,6 +106,7 @@ class Acompanhamento:
     def rodar_uma_vez(self) -> Rodada | None:
         """Uma rodada completa. Devolve None se o TSE ainda não publicou nada."""
         self.ultima_tentativa = datetime.now(FUSO_BRASILIA)
+        self._falhas = 0
         andamento = self._andamentos()
         if andamento.empty:
             return None
@@ -116,7 +131,7 @@ class Acompanhamento:
 
         self.placar_ufs = self._placar_por_uf()
         rodada = self._projetar()
-        brasil = self.cliente.resultado(self.eleicao, self.cargo, "br")
+        brasil = self._seguro(self.cliente.resultado, self.eleicao, self.cargo, "br")
         if brasil is not None and not brasil.candidatos.empty:
             numeros = brasil.candidatos["nr_candidato"].astype(int)
             a = brasil.candidatos.loc[numeros == self.nr_a, "qt_votos"].sum()
@@ -125,6 +140,7 @@ class Acompanhamento:
                 rodada.pct_a_oficial = float(a / (a + b))
             if brasil.resumo["qt_secoes"]:
                 rodada.pct_secoes_oficial = brasil.resumo["qt_secoes_totalizadas"] / brasil.resumo["qt_secoes"]
+        rodada.falhas = self._falhas
         with self._trava:
             self.historico.append(rodada)
             self.erro = None

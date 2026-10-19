@@ -76,7 +76,7 @@ Toda análise foi testada contra dados reais antes de ser usada.
 | **Reprodução da apuração de 2022** | Reconstruímos a noite da apuração urna por urna e comparamos, minuto a minuto, com o registro oficial do TSE. | Quase idêntica: diferença média de 0,4 ponto no total de urnas apuradas e de 0,07 ponto no placar. |
 | **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Em 92% das atualizações, o resultado final estava dentro da margem de erro da projeção. |
 | **Previsão ao vivo: 1º turno de 2022** | O mesmo teste, com o placar entre LULA e JAIR BOLSONARO. | Com 10% apurado: **0,7 ponto** de erro, contra **5,8** do placar oficial. Com metade apurada: 0,4 contra 3,8. O resultado final esteve dentro da margem de erro em 100% das atualizações. |
-| **Leitura dos votos digitados na urna (RDV)** | Nas 9 disputas de Governador analisadas, somamos os votos de cada candidato lidos voto a voto no RDV e comparamos com o resultado oficial. | Bateu exatamente em 6 disputas; nas outras 3, diferença de no máximo 0,02% (uma urna ilegível no RS e votos em candidaturas indeferidas em SC e na BA). |
+| **Leitura dos votos digitados na urna (RDV)** | Nas 8 disputas de Governador analisadas, somamos os votos de cada candidato lidos voto a voto no RDV e comparamos com o resultado oficial. | Bateu exatamente em 5 disputas; nas outras 3, diferença de no máximo 0,02% (uma urna ilegível no RS e votos em candidaturas indeferidas em SC e na BA). |
 | **Soma das seções × oficial (1º turno de 2026)** | Somamos os votos das 499.248 seções e comparamos com o resultado oficial, por candidato, UF e município. | Bateu exatamente. Os 5.246 votos no nº 28 (candidatura que renunciou) aparecem nas seções, mas o TSE os conta como nulos, e a conta dos nulos também fecha. |
 | **Mapa do DF** | Somamos as seções de cada local de votação e região administrativa e comparamos com o resultado do DF. | Bateu exatamente nas quatro disputas (Presidente 2022 e 2026, Governador 2026). |
 
@@ -86,9 +86,9 @@ Quem digita para Governador o número de um candidato a Presidente (por exemplo,
 não existe candidato a Governador com esse número no estado tem o voto anulado.
 O TSE publica o registro de cada voto digitado (RDV), então dá para contar.
 
-Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
+Nas 8 disputas de Governador mais apertadas de 2022 e 2026:
 
-- **Em 7 das 9**, esses votos eram mais do que os que bastariam para mudar o
+- **Em 6 das 8**, esses votos eram mais do que os que bastariam para mudar o
   resultado. Exemplo: no DF em 2026, faltaram 2.177 votos para a disputa
   terminar no 1º turno, e 30.034 votos foram anulados assim.
 - Supondo que cada eleitor queria votar no candidato da coligação do partido
@@ -132,10 +132,16 @@ Nas 9 disputas de Governador mais apertadas de 2022 e 2026:
   votos). Uma leitura errada derrubou horas de processamento; agora valores
   impossíveis são rejeitados, a leitura é salva em partes e a soma é sempre
   conferida com o resultado oficial.
-- **Dados que ainda mudam.** Em 10/10 o TSE ainda reprocessava a eleição de
-  deputados do Amazonas (8 vagas federais e 24 estaduais sem eleitos) e havia
-  491 candidaturas com votos anulados sub judice. As páginas avisam, e os números
-  se atualizam ao rodar os scripts de novo.
+- **Dados que mudam depois da eleição.** Em 10/10 o TSE ainda reprocessava os
+  deputados do Amazonas e, no mesmo dia, refez a totalização de Governador do RJ:
+  os votos de um candidato deixaram de ser válidos e a disputa, que ia ao 2º
+  turno, terminou no 1º. Rodando os scripts de novo, as páginas se atualizam; a
+  análise dos votos no número errado passou de 9 para 8 disputas apertadas.
+- **Fontes que mudam de formato.** De 2022 para 2026, o TSE trocou o nome da
+  coluna de escolaridade e passou a publicar o 2º turno já preenchido (todos
+  "comparecendo") antes da eleição; e a API do Banco Central passou a recusar os
+  pedidos automáticos, então o IPCA passou a vir do IBGE, que é quem o calcula.
+  Cada caso virou uma regra no código, com a explicação ao lado.
 - **Mapas em branco.** Os mapas do Plotly baixam um contorno do mundo de
   cdn.plot.ly. No ambiente de teste, sem acesso a esse endereço, eles saíam
   vazios; servir o arquivo pelo próprio site resolveu ali, mas deixou os mapas
