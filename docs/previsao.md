@@ -293,11 +293,11 @@ Erro em relação ao resultado final (pontos percentuais):
 
 | Apurado | 2º turno: placar oficial | 2º turno: projeção | 1º turno: placar oficial | 1º turno: projeção |
 |---|---|---|---|---|
-| 5% | −4,6 | +0,5 | −6,5 | −0,8 |
+| 5% | −4,6 | +0,5 | −6,5 | −0,7 |
 | 10% | −2,9 | −0,5 | −5,8 | −0,7 |
 | 25% | −2,1 | −0,7 | −5,2 | −0,8 |
 | 50% | −1,2 | −0,6 | −3,8 | −0,4 |
-| 75% | −0,7 | −0,2 | −2,3 | −0,1 |
+| 75% | −0,7 | −0,2 | −2,3 | −0,2 |
 
 - **Lado certo desde o início:** depois de 5% apurado, a projeção mostrou LULA à
   frente o tempo todo nos dois turnos. O placar oficial só virou às 18h44 no

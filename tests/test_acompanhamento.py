@@ -1,4 +1,5 @@
 import pandas as pd
+import pytest
 import requests
 
 from eleicoes.acompanhamento import Acompanhamento
@@ -97,7 +98,24 @@ def test_andamento_recusado_nao_derruba_a_rodada():
         return original(eleicao, uf)
 
     cliente.andamento = recusa
-    assert acomp.rodar_uma_vez() is None             # nada chegou nesta rodada: o histórico não muda
-    assert len(acomp.tabela_historico()) == 1
+    with pytest.raises(requests.RequestException):   # nada chegou porque o TSE recusou: é erro, não "não publicou"
+        acomp.rodar_uma_vez()
+    assert len(acomp.tabela_historico()) == 1        # o histórico não muda
     cliente.andamento = original
     assert acomp.rodar_uma_vez() is not None
+
+
+def test_ultima_tentativa_so_no_fim_da_rodada():
+    cliente = ClienteFalso()
+    acomp = acompanhamento(cliente)
+    vista_durante = []
+    original = cliente.andamento
+
+    def espiando(eleicao, uf):
+        vista_durante.append(acomp.ultima_tentativa)
+        return original(eleicao, uf)
+
+    cliente.andamento = espiando
+    acomp.rodar_uma_vez()
+    assert vista_durante and all(v is None for v in vista_durante)   # durante a 1ª rodada: "conectando"
+    assert acomp.ultima_tentativa is not None

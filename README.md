@@ -28,7 +28,7 @@ a tabela com os números de cada gráfico
 | Patrimônio declarado | bens por cargo e partido e a evolução desde 2018, descontada a inflação |
 | Eleitorado | pirâmide etária, voto facultativo (16–17 e 70+), municípios com mais eleitores que habitantes, abstenção por perfil |
 | Previsão do 2º turno | previsão com margem de erro, teste nas eleições passadas e cenários dos eliminados |
-| Apuração ao vivo | na noite de 25/10, placar e projeção a cada minuto; até lá, o teste com 2022 |
+| Apuração ao vivo | na noite de 25/10, placar e projeção de Presidente a cada minuto, e o placar de Governador no DF e em mais 5 estados; até lá, o teste com 2022 |
 | Mapa do DF | as 35 regiões administrativas e os locais de votação do DF, 2022 e 2026 |
 | Conferência dos dados | as somas batem com o oficial? E por que a Lei de Benford não prova fraude |
 | Dinheiro de campanha | entra em novembro, quando fecharem as prestações de contas |

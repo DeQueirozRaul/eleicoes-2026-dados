@@ -104,11 +104,18 @@ class Acompanhamento:
         return uf, municipio, qt_a, qt_b
 
     def rodar_uma_vez(self) -> Rodada | None:
-        """Uma rodada completa. Devolve None se o TSE ainda não publicou nada."""
-        self.ultima_tentativa = datetime.now(FUSO_BRASILIA)
+        """Uma rodada completa. Devolve None se o TSE ainda não publicou nada.
+
+        `ultima_tentativa` só é preenchida no fim da rodada: enquanto a primeira está em
+        andamento, a página mostra "conectando" (e não "o TSE ainda não divulgou")."""
+        inicio = datetime.now(FUSO_BRASILIA)
         self._falhas = 0
         andamento = self._andamentos()
         if andamento.empty:
+            self.ultima_tentativa = inicio
+            if self._falhas:
+                # nada chegou porque o TSE recusou os pedidos, não porque não publicou
+                raise requests.RequestException(f"o TSE recusou {self._falhas} pedidos de andamento")
             return None
         self.publicado = True
         municipios = andamento[andamento["tp_abrangencia"] == "mun"]
@@ -144,6 +151,7 @@ class Acompanhamento:
         with self._trava:
             self.historico.append(rodada)
             self.erro = None
+        self.ultima_tentativa = inicio
         self.encerrado = rodada.pct_secoes >= 1 and not mudaram
         return rodada
 

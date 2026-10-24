@@ -7,13 +7,14 @@ from pathlib import Path
 import comum
 import pandas as pd
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # para importar o pacote eleicoes
 
 from eleicoes.acompanhamento import Acompanhamento  # noqa: E402
 from eleicoes.ao_vivo import MINIMO_APURADO, Parametros  # noqa: E402
-from eleicoes.tse_ao_vivo import FUSO_BRASILIA  # noqa: E402
+from eleicoes.tse_ao_vivo import FUSO_BRASILIA, ClienteTSE  # noqa: E402
 
 PLACAR, PROJECAO = comum.SERIE, comum.DESTAQUE
 CONFIG = json.loads((comum.DADOS / "ao_vivo_config.json").read_text(encoding="utf-8"))
@@ -44,6 +45,15 @@ def pct_de(nome: str, pct_a: float) -> float:
     return pct_a if nome == A["nm_urna"] else 1 - pct_a
 
 
+def placar(linha) -> float | None:
+    """% de A no placar oficial; None enquanto não há nenhum voto apurado (com zero
+    votos, "100% menos 0%" daria 100% ao outro candidato, o que seria falso)."""
+    if pd.notna(linha["pct_a_oficial"]):
+        return float(linha["pct_a_oficial"])
+    votos = linha["qt_a"] + linha["qt_b"]
+    return float(linha["qt_a"] / votos) if votos > 0 else None
+
+
 @st.fragment(run_every=60)
 def painel_ao_vivo() -> None:
     acomp = acompanhamento(ELEICAO)
@@ -71,11 +81,12 @@ def painel_ao_vivo() -> None:
                    icon=":material/sync_problem:")
 
     publicavel = ultima["pct_secoes"] >= MINIMO_APURADO and pd.notna(ultima["pct_a_mediana"])
+    oficial = placar(ultima)
     colunas = st.columns(2)
     for coluna, nome in zip(colunas, sorted([A["nm_urna"], B["nm_urna"]])):
-        oficial = ultima["pct_a_oficial"] if pd.notna(ultima["pct_a_oficial"]) else ultima["qt_a"] / max(
-            ultima["qt_a"] + ultima["qt_b"], 1)
-        if publicavel and not acomp.encerrado:
+        if oficial is None:
+            detalhe = "aguardando os primeiros votos apurados"
+        elif publicavel and not acomp.encerrado:
             mais = pct_de(nome, ultima["pct_a_mediana"])
             faixa = sorted([pct_de(nome, ultima["pct_a_inferior"]), pct_de(nome, ultima["pct_a_superior"])])
             chance = pct_de(nome, ultima["prob_a_vence"])
@@ -86,9 +97,14 @@ def painel_ao_vivo() -> None:
         else:
             detalhe = "a projeção aparece a partir de 5% das seções apuradas"
         with coluna:
-            comum.cartao(f"{nome} · placar oficial", comum.pct(pct_de(nome, oficial), 2), detalhe, cor=CORES[nome])
+            valor = "—" if oficial is None else comum.pct(pct_de(nome, oficial), 2)
+            comum.cartao(f"{nome} · placar oficial", valor, detalhe, cor=CORES[nome])
 
-    if len(historico) > 1:
+    historico["placar"] = [placar(linha) for _, linha in historico.iterrows()]
+    historico = historico[historico["placar"].notna()]
+    if len(historico) <= 1:
+        st.caption("O gráfico da noite aparece quando chegarem os primeiros votos apurados.")
+    else:
         fig = go.Figure()
         proj = historico[(historico["pct_secoes"] >= MINIMO_APURADO) & historico["pct_a_mediana"].notna()]
         y = lambda serie: serie.map(lambda v: pct_de(PRIMEIRO, v))  # noqa: E731
@@ -101,13 +117,15 @@ def painel_ao_vivo() -> None:
             fig.add_trace(go.Scatter(x=proj["momento"], y=y(proj["pct_a_mediana"]), mode="lines", name="projeção",
                                      line=dict(color=PROJECAO, width=2),
                                      hovertemplate="%{x|%H:%M}<br>projeção: %{y:.2%}<extra></extra>"))
-        fig.add_trace(go.Scatter(x=historico["momento"], y=y(historico["pct_a_oficial"]), mode="lines",
+        fig.add_trace(go.Scatter(x=historico["momento"], y=y(historico["placar"].astype(float)), mode="lines",
                                  name="placar oficial", line=dict(color=PLACAR, width=2),
                                  hovertemplate="%{x|%H:%M}<br>placar: %{y:.2%}<extra></extra>"))
         fig.add_hline(y=0.5, line=dict(color=comum.EIXO, width=1))
         fig.update_xaxes(tickformat="%H:%M", title="horário de Brasília")
         outro = sorted([A["nm_urna"], B["nm_urna"]])[1]
-        fig.update_yaxes(tickformat=".1%", title=f"% de {PRIMEIRO}")
+        valores = pd.concat([y(historico["placar"].astype(float)), y(proj["pct_a_inferior"]), y(proj["pct_a_superior"])])
+        fig.update_yaxes(tickformat=".1%", title=f"% de {PRIMEIRO}",
+                         range=[max(0.0, min(valores.min(), 0.5) - 0.02), min(1.0, max(valores.max(), 0.5) + 0.02)])
         comum.estilo(fig, altura=380)
         comum.mostrar(fig, fonte="TSE (resultados divulgados ao vivo); projeção calculada pelo projeto.",
                       chave="ao_vivo")
@@ -126,10 +144,62 @@ def painel_ao_vivo() -> None:
             st.dataframe(tabela, hide_index=True)
 
 
+# Para testar fora da noite da eleição: AO_VIVO_ELEICAO_GOVERNADOR=6259 (1º turno, já apurado)
+ELEICAO_GOVERNADOR = int(os.environ.get("AO_VIVO_ELEICAO_GOVERNADOR", CONFIG.get("eleicao_governador", 6260)))
+UF_NOMES = {"ac": "Acre", "am": "Amazonas", "df": "Distrito Federal", "es": "Espírito Santo",
+            "rn": "Rio Grande do Norte", "to": "Tocantins"}
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def resultado_governador(eleicao: int, uf: str):
+    """Placar oficial de Governador numa UF (um arquivo do TSE, guardado por 1 minuto)."""
+    try:
+        r = ClienteTSE().resultado(eleicao, 3, uf)
+    except requests.RequestException:
+        return None
+    if r is None or r.candidatos.empty:
+        return None
+    return r.resumo, r.candidatos[["nr_candidato", "nm_urna", "sg_partido", "qt_votos"]].copy()
+
+
+@st.fragment(run_every=60)
+def painel_governador() -> None:
+    ufs = CONFIG.get("ufs_governador_2t", ["df"])
+    uf = st.selectbox("Estado", ufs, format_func=lambda u: UF_NOMES.get(u, u.upper()), key="uf_governador")
+    dados = resultado_governador(ELEICAO_GOVERNADOR, uf)
+    if dados is None:
+        st.info("Não foi possível ler o resultado do TSE agora; a página tenta de novo em 1 minuto.",
+                icon=":material/sync_problem:")
+        return
+    resumo, cand = dados
+    cand = cand.sort_values("qt_votos", ascending=False).head(2)     # no 2º turno são só dois
+    votos = int(cand["qt_votos"].sum())
+    secoes = resumo["qt_secoes_totalizadas"] / resumo["qt_secoes"] if resumo["qt_secoes"] else 0.0
+    gerado = resumo.get("dt_geracao")
+    hora = f" · arquivo do TSE das {gerado:%H:%M}" if gerado is not None and pd.notna(gerado) else ""
+    st.markdown(f"**{comum.pct(secoes, 2)} das seções apuradas**{hora}")
+    nomes = sorted(cand["nm_urna"])
+    cores = comum.cores_finalistas(nomes)
+    for coluna, nome in zip(st.columns(2), nomes):
+        linha = cand[cand["nm_urna"] == nome].iloc[0]
+        with coluna:
+            if votos == 0:
+                comum.cartao(f"{nome} ({linha['sg_partido']}) · placar oficial", "—",
+                             "aguardando os primeiros votos apurados", cor=cores[nome])
+            else:
+                comum.cartao(f"{nome} ({linha['sg_partido']}) · placar oficial",
+                             comum.pct(linha["qt_votos"] / votos, 2),
+                             f"{comum.numero(linha['qt_votos'])} votos", cor=cores[nome])
+    st.caption("Placar oficial do TSE, nos votos dados aos dois candidatos (os válidos), sem projeção: a projeção "
+               "deste site é só para Presidente. Atualiza a cada minuto.")
+
+
 agora = datetime.now(FUSO_BRASILIA)
 if "AO_VIVO_ELEICAO" in os.environ or agora >= INICIO - timedelta(minutes=15):
     st.subheader("2º turno de 2026")
     painel_ao_vivo()
+    st.subheader("Governador, 2º turno (DF e outros 5 estados)")
+    painel_governador()
 else:
     st.info(
         "**Na noite de 25/10**, a partir do fechamento das urnas (17h, horário de Brasília), esta página vai "
@@ -137,6 +207,14 @@ else:
         "feito com as duas apurações de 2022.",
         icon=":material/schedule:",
     )
+    if INICIO - agora < timedelta(hours=12):
+        @st.fragment(run_every=60)
+        def aguardar_inicio() -> None:
+            """Quem abriu a página antes das 16h45 entra no modo ao vivo sem precisar recarregar."""
+            if datetime.now(FUSO_BRASILIA) >= INICIO - timedelta(minutes=15):
+                st.rerun()
+
+        aguardar_inicio()
 
 st.subheader("O teste: a noite de 2022 reproduzida seção por seção")
 st.markdown(
