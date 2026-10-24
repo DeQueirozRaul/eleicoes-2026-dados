@@ -80,7 +80,10 @@ def _posterior_erros(r, w_var, X, precisao_prior):
 
 
 def projetar(estado: pd.DataFrame, p: Parametros = Parametros(), cenarios: int = 2000,
-             semente: int = 0, nivel: float = 0.9) -> Projecao:
+             semente: int = 0, nivel: float = 0.9, bloco: int = 500) -> Projecao:
+    """Projeção com `cenarios` sorteios. Os sorteios são feitos em blocos de `bloco`
+    cenários: cada bloco ocupa cenários × municípios números na memória, e com 5.700
+    municípios um bloco único de 3.000 cenários passaria de 1 GB."""
     rng = np.random.default_rng(semente)
     ufs, uf_idx = np.unique(estado["uf"].to_numpy(), return_inverse=True)
     n_uf = len(ufs)
@@ -115,22 +118,25 @@ def projetar(estado: pd.DataFrame, p: Parametros = Parametros(), cenarios: int =
     restante = (aptos - aptos_ap) * taxa
 
     # 4. sorteios
-    erros = rng.multivariate_normal(media, cov, size=cenarios)          # cenários x efeitos
-    base = prior[None, :] + erros @ X.T
     # erro próprio do município: o que já apurou informa sobre o que falta
     var_e = p.sigma_mun ** 2 + p.c_tamanho / np.maximum(aptos * taxa, 1)
     rho = np.zeros(len(estado))
-    desvio_obs = np.zeros((cenarios, len(estado)))
     rho[tem] = var_e[tem] / (var_e[tem] + p.sigma_parcial ** 2 + p.c_tamanho / np.maximum(validos[tem], 1))
-    desvio_obs[:, tem] = logit((a[tem] + 0.5) / (validos[tem] + 1))[None, :] - base[:, tem]
-    e = rho * desvio_obs + rng.normal(size=base.shape) * np.sqrt((1 - rho) * var_e)
-    atraso = (rng.normal(0, p.sigma_restante_nacional, size=(cenarios, 1))
-              + rng.normal(0, p.sigma_restante_uf, size=(cenarios, n_uf))[:, uf_idx])
-    pct_restante = logistica(base + e + atraso)
-
-    total_a = a.sum() + (pct_restante * restante).sum(axis=1)
+    logit_obs = logit((a[tem] + 0.5) / (validos[tem] + 1))
     total = validos.sum() + restante.sum()
-    pct = total_a / total
+    pct = []
+    for inicio in range(0, cenarios, bloco):
+        n = min(bloco, cenarios - inicio)
+        erros = rng.multivariate_normal(media, cov, size=n)              # cenários x efeitos
+        base = prior[None, :] + erros @ X.T
+        desvio_obs = np.zeros((n, len(estado)))
+        desvio_obs[:, tem] = logit_obs[None, :] - base[:, tem]
+        e = rho * desvio_obs + rng.normal(size=base.shape) * np.sqrt((1 - rho) * var_e)
+        atraso = (rng.normal(0, p.sigma_restante_nacional, size=(n, 1))
+                  + rng.normal(0, p.sigma_restante_uf, size=(n, n_uf))[:, uf_idx])
+        pct_restante = logistica(base + e + atraso)
+        pct.append((a.sum() + (pct_restante * restante).sum(axis=1)) / total)
+    pct = np.concatenate(pct)
     q = (1 - nivel) / 2
     return Projecao(
         pct_a_apurado=float(a.sum() / validos.sum()) if validos.sum() else float("nan"),

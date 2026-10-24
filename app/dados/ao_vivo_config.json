@@ -21,5 +21,14 @@
     "sigma_tamanho": 0.2,
     "sigma_restante_nacional": 0.04,
     "sigma_restante_uf": 0.05
-  }
+  },
+  "eleicao_governador": 6260,
+  "ufs_governador_2t": [
+    "df",
+    "ac",
+    "am",
+    "es",
+    "rn",
+    "to"
+  ]
 }

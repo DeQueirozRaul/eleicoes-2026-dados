@@ -31,6 +31,9 @@ def main() -> None:
         "eleicao": 6258,
         "cargo": 1,
         "inicio_apuracao": "2026-10-25T17:00:00-03:00",
+        # Governador, 2º turno: só o placar oficial (sem projeção); o DF vem primeiro
+        "eleicao_governador": 6260,
+        "ufs_governador_2t": ["df", "ac", "am", "es", "rn", "to"],
         "finalistas": {lado: {"nr_candidato": int(v["nr_candidato"]), "nm_urna": v["nm_urna"]}
                        for lado, v in nomes.items()},
         "parametros": asdict(parametros),

@@ -53,7 +53,10 @@ computador `scripts\preparar_site.py`, faça commit dos arquivos de
 
 - A página **Apuração ao vivo** começa a buscar os resultados no TSE sozinha às
   16h45 (horário de Brasília) e atualiza a cada minuto. Não precisa deixar o
-  seu computador ligado.
+  seu computador ligado. Quem já estiver com a página aberta entra no modo ao
+  vivo sem recarregar. Além de Presidente (placar e projeção), ela mostra o
+  placar de Governador no DF e nos outros 5 estados com 2º turno.
+- Até chegar o primeiro voto apurado, os cartões mostram "—" (e não 0% × 100%).
 - **Abra o site umas 16h30.** Sites do plano grátis "dormem" quando ficam um
   tempo sem visitas; se aparecer um botão para acordar o app, clique e espere
   cerca de 1 minuto.
