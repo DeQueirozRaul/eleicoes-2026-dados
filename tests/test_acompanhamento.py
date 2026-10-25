@@ -119,3 +119,38 @@ def test_ultima_tentativa_so_no_fim_da_rodada():
     acomp.rodar_uma_vez()
     assert vista_durante and all(v is None for v in vista_durante)   # durante a 1ª rodada: "conectando"
     assert acomp.ultima_tentativa is not None
+
+
+def test_maximo_por_rodada_baixa_primeiro_quem_mais_avancou():
+    cliente = ClienteFalso()
+    acomp = acompanhamento(cliente)
+    acomp.maximo_por_rodada = 1
+    cliente.rodada = 1                               # 001 e 002 já apuraram; 002 avançou menos (500 × 1000)
+    r = acomp.rodar_uma_vez()
+    assert cliente.baixados == ["001", ""]           # só um município por rodada: o que mais avançou
+    assert r.pct_secoes == 0.5
+    cliente.baixados = []
+    r = acomp.rodar_uma_vez()
+    assert cliente.baixados == ["002", ""]           # o outro entra na rodada seguinte
+    assert r.pct_secoes == 0.75
+
+
+def test_arquivo_do_municipio_atrasado_nao_conta_como_apurado():
+    cliente = ClienteFalso()
+    acomp = acompanhamento(cliente)
+    original = cliente.resultado
+
+    def atrasado(eleicao, cargo, uf="br", municipio=""):
+        r = original(eleicao, cargo, uf, municipio)
+        if municipio == "001":
+            r.resumo = {"qt_secoes": 2, "qt_secoes_totalizadas": 0}   # cache do TSE: ainda sem a seção apurada
+        return r
+
+    cliente.resultado = atrasado
+    r = acomp.rodar_uma_vez()
+    assert r.pct_secoes == 0 and r.qt_a == 0
+    cliente.resultado = original
+    cliente.baixados = []
+    r = acomp.rodar_uma_vez()                        # na rodada seguinte o arquivo chega em dia
+    assert cliente.baixados == ["001", ""]
+    assert r.pct_secoes == 0.5 and r.qt_a == 600

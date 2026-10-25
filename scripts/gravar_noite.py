@@ -13,8 +13,12 @@ Grava em dados/ao_vivo/:
     noite_e{eleicao}_municipios.parquet votos e eleitorado apurado por município (a cada 10
                                       rodadas e no fim)
 
-Se o processo cair, rodar de novo continua acrescentando linhas (a primeira rodada
-depois de voltar baixa de novo todos os municípios que já apuraram).
+Se o processo cair, rodar de novo continua de onde parou: o estado dos municípios é
+salvo a cada rodada, e só os que mudaram desde então são baixados de novo.
+
+Quando o servidor do TSE limita os pedidos (HTTP 429), o gravador pede menos: poucos
+downloads em paralelo, sem repetir o pedido na hora e no máximo --maximo municípios
+por rodada (primeiro os que mais avançaram; o resto fica para as próximas rodadas).
 """
 
 from __future__ import annotations
@@ -45,6 +49,28 @@ def acrescentar(tabela: pd.DataFrame, caminho: Path) -> None:
     tabela.to_csv(caminho, mode="a", header=not caminho.exists(), index=False)
 
 
+def restaurar(acomp: Acompanhamento, arquivo_mun: Path) -> int:
+    """Volta do estado salvo pela gravação anterior. Um município salvo conta como em dia
+    se o eleitorado apurado dele ainda é o mesmo; os outros são baixados de novo."""
+    if not arquivo_mun.exists():
+        return 0
+    for m in pd.read_parquet(arquivo_mun).itertuples():
+        acomp.municipios[(m.uf.lower(), m.cd_municipio_tse)] = {
+            "qt_aptos": int(m.qt_aptos), "qt_aptos_apurados": int(m.qt_aptos_apurados),
+            "qt_a": int(m.qt_a), "qt_b": int(m.qt_b)}
+    andamento = acomp._andamentos()
+    if andamento.empty:
+        return 0
+    em_dia = 0
+    for m in andamento[andamento["tp_abrangencia"] == "mun"].itertuples():
+        info = acomp.municipios.get((m.uf, m.cd_abrangencia))
+        if (info and m.qt_secoes_totalizadas > 0 and info["qt_a"] + info["qt_b"] > 0
+                and info["qt_aptos_apurados"] == m.qt_eleitores_secoes_totalizadas):
+            acomp.versao[(m.uf, m.cd_abrangencia)] = (m.qt_secoes_totalizadas, m.dt_totalizacao)
+            em_dia += 1
+    return em_dia
+
+
 def placar_governador(cliente: ClienteTSE, eleicao: int, ufs: list[str], momento: datetime) -> pd.DataFrame:
     linhas = []
     for uf in ufs:
@@ -70,6 +96,8 @@ def main() -> int:
     parser.add_argument("--eleicao", type=int, default=config["eleicao"])
     parser.add_argument("--governador", type=int, default=config.get("eleicao_governador", 6260))
     parser.add_argument("--intervalo", type=int, default=60)
+    parser.add_argument("--paralelos", type=int, default=2, help="downloads ao mesmo tempo")
+    parser.add_argument("--maximo", type=int, default=150, help="municípios baixados por rodada, no máximo")
     parser.add_argument("--ate", default="2026-10-26T04:00:00-03:00", help="para sozinho nesse horário")
     args = parser.parse_args()
     ate = datetime.fromisoformat(args.ate)
@@ -82,10 +110,14 @@ def main() -> int:
     acomp = Acompanhamento(
         eleicao=args.eleicao, cargo=config["cargo"], nr_a=a["nr_candidato"], nr_b=b["nr_candidato"],
         prior=pd.read_parquet(DADOS_SITE / "ao_vivo_prior.parquet"), parametros=Parametros(**config["parametros"]),
-        intervalo=args.intervalo, cenarios=3000)
-    cliente_gov = ClienteTSE()
+        intervalo=args.intervalo, cenarios=3000, paralelos=args.paralelos, maximo_por_rodada=args.maximo,
+        cliente=ClienteTSE(tentativas=1))   # o que falhar é pedido de novo na rodada seguinte
+    cliente_gov = ClienteTSE(tentativas=1)
     print(f"Gravando a eleição {args.eleicao} ({a['nm_urna']} × {b['nm_urna']}) em {arquivo}; até {ate:%d/%m %H:%M}",
           flush=True)
+    em_dia = restaurar(acomp, arquivo_mun)
+    if acomp.municipios:
+        print(f"Estado anterior: {len(acomp.municipios)} municípios, {em_dia} sem mudança desde então", flush=True)
 
     rodadas = encerradas = 0
     while datetime.now(FUSO_BRASILIA) < ate:
@@ -107,8 +139,7 @@ def main() -> int:
             placar = "—" if rodada.pct_a_oficial is None else f"{rodada.pct_a_oficial:.2%}"
             print(f"{momento:%H:%M:%S} seções {rodada.pct_secoes:7.2%} | placar {a['nm_urna']} {placar} | "
                   f"projeção {projecao} | falhas {rodada.falhas} | {time.monotonic() - inicio:4.1f}s", flush=True)
-            if rodadas % 10 == 0:
-                acomp.estado().to_parquet(arquivo_mun, index=False)
+            acomp.estado().to_parquet(arquivo_mun, index=False)
             encerradas = encerradas + 1 if acomp.encerrado else 0
         elif not acomp.publicado:
             print(f"{momento:%H:%M:%S} o TSE ainda não publicou a eleição {args.eleicao}", flush=True)
@@ -120,7 +151,9 @@ def main() -> int:
         if encerradas >= 3:
             print("Apuração encerrada (100% das seções e nada mudou em 3 rodadas).", flush=True)
             break
-        time.sleep(max(5.0, args.intervalo - (time.monotonic() - inicio)))
+        # muitas recusas: espera o dobro antes de pedir de novo
+        espera = args.intervalo * (2 if rodada is not None and rodada.falhas > 20 else 1)
+        time.sleep(max(5.0, espera - (time.monotonic() - inicio)))
 
     if acomp.municipios:
         acomp.estado().to_parquet(arquivo_mun, index=False)
