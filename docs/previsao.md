@@ -362,7 +362,8 @@ uma regra simples.
 ## A noite de 25/10/2026
 
 Resultado do TSE: **FLAVIO BOLSONARO 48,23%** e **LULA 51,77%** dos votos
-válidos. A projeção foi gravada a cada minuto pelo
+válidos, com 99,93% das seções apuradas (o resto não muda o resultado nem na
+segunda casa decimal). A projeção foi gravada a cada minuto pelo
 [`scripts/gravar_noite.py`](../scripts/gravar_noite.py), que roda o mesmo código
 do site, e comparada com o resultado pelo
 [`scripts/analisar_noite.py`](../scripts/analisar_noite.py).
@@ -399,8 +400,9 @@ seções apuradas (pontos percentuais, no % de FLAVIO BOLSONARO):
   (47% apurado).
 - **Margem:** o resultado final ficou dentro da margem de 90% em 92% das
   atualizações entre 5% e 99,5% apurado. As que ficaram de fora foram as cinco
-  do começo. Contando o fim da noite, 83%: lá a margem fica mais estreita que os
-  milésimos de ponto que o resultado ainda mudou. Largura média da margem: 3,4
+  do começo. Depois de 99,5% apurado, a margem fica mais estreita que os
+  milésimos de ponto que o resultado ainda mudou, e o final fica fora dela por
+  menos de 0,1 ponto. Largura média da margem: 3,4
   pontos com 5% a 10% lido, 2,8 com 10% a 25%, 2,2 com 25% a 50% e 1,4 com 50% a
   75%.
 
@@ -409,7 +411,7 @@ seções apuradas (pontos percentuais, no % de FLAVIO BOLSONARO):
 1. **O TSE limitou os pedidos.** Entre 19h30 e 19h53, e de novo depois das
    20h40, o servidor de resultados (Akamai) respondeu "pedidos demais" (HTTP
    429) a parte dos arquivos. A projeção ficou atrás do TSE: às 19h40 o TSE já
-   tinha 10,9% das seções apuradas e ela, 6,9% do eleitorado. Em 17 das 118
+   tinha 10,9% das seções apuradas e ela, 6,9% do eleitorado. Em 17 das 124
    rodadas o arquivo do Brasil não veio; o gráfico repete o último placar
    recebido. Desde 19h53 o gravador pede menos: dois arquivos de cada vez, sem
    repetir o pedido na hora, e no máximo 150 a 400 municípios por rodada,
