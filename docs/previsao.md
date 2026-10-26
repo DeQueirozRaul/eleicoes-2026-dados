@@ -138,6 +138,24 @@ descartar uma eleição real, então o modelo principal usa todas.
 
 A previsão por UF e por município fica em `dados/modelo/` (gerada pelo script).
 
+### Como ficou
+
+Resultado do TSE: FLAVIO BOLSONARO 48,23% e LULA 51,77% dos votos válidos.
+
+| Escolha | Previsto (FLAVIO BOLSONARO) | Intervalo 90% | Erro | Resultado dentro do intervalo? |
+|---|---|---|---|---|
+| Modelo principal | 50,0% | 42,3% a 57,4% | +1,7 | sim |
+| Sem 2006 no treino | 49,7% | 47,3% a 52,1% | +1,5 | sim |
+| Mudança igual em todos os municípios | 50,1% | 42,4% a 57,6% | +1,9 | sim |
+| Cenários de transferência dos eliminados | 51,0% a 51,5% | — | +2,8 a +3,3 | não |
+
+O erro do modelo principal (1,7 ponto) ficou perto do erro típico da validação
+(metade das eleições com até 1,5 ponto), e o resultado ficou dentro do
+intervalo. A chance era de 50% para cada lado: só com o 1º turno, o modelo não
+apontava quem venceria, e quem venceu foi o 2º colocado do 1º turno. Os cenários
+de transferência erraram mais, como a validação já indicava (seção abaixo): o
+2º turno não foi decidido pelos eleitores dos eliminados.
+
 ### Limitações
 
 - Não usa pesquisas, então não capta o que a campanha muda entre os turnos.
@@ -303,7 +321,10 @@ Erro em relação ao resultado final (pontos percentuais):
   frente o tempo todo nos dois turnos. O placar oficial só virou às 18h44 no
   2º turno (68% apurado) e às 20h00 no 1º (67%).
 - **Intervalo honesto:** o resultado final ficou dentro do intervalo de 90% em
-  92% dos momentos (a partir de 5% apurado) no 2º turno e em 100% no 1º. A largura média do intervalo
+  98% dos momentos entre 5% e 99,5% apurado no 2º turno e em 100% no 1º.
+  Contando também o fim da noite (acima de 99,5%), 92% no 2º turno: nos
+  últimos minutos a margem fica mais estreita que os milésimos de ponto que o
+  resultado ainda muda. A largura média do intervalo
   foi de ~3 pontos com 5–10% apurado, ~2 pontos com 25–50% e ~1,2 ponto com
   50–75%.
 - **Chance acima de 90%:** de forma estável, a partir de 18h40 no 2º turno (64%
@@ -334,26 +355,107 @@ Erro em relação ao resultado final (pontos percentuais):
 
 **Ressalva:** o ajuste 3 foi feito depois de ver o resultado do 1º turno. Então
 os dois testes de 2022 já ajudaram a desenhar o modelo, e o teste realmente
-independente será a noite de 25/10/2026. Os parâmetros não foram ajustados
+independente foi a noite de 25/10/2026 (abaixo). Os parâmetros não foram ajustados
 para acertar nenhum dos dois testes: o 1 e o 3 vieram dos diagnósticos e o 2 é
 uma regra simples.
 
-## Na noite de 25/10
+## A noite de 25/10/2026
+
+Resultado do TSE: **FLAVIO BOLSONARO 48,23%** e **LULA 51,77%** dos votos
+válidos. A projeção foi gravada a cada minuto pelo
+[`scripts/gravar_noite.py`](../scripts/gravar_noite.py), que roda o mesmo código
+do site, e comparada com o resultado pelo
+[`scripts/analisar_noite.py`](../scripts/analisar_noite.py).
+
+**Uma noite fora do roteiro.** A votação foi prorrogada até as 19h em todo o
+país por decisão do STF (ministro Cristiano Zanin). O TSE parou a divulgação às
+17h06, com 0,25% das seções apuradas, e só voltou às 19h01. A gravação começou
+às 17h08: nada se perdeu, porque o TSE não publicou nada novo entre 17h06 e
+19h01.
+
+![Placar oficial e projeção ao vivo na noite do 2º turno de 2026](img/apuracao_2026_2t.png)
+
+Erro em relação ao resultado final, no momento em que o TSE chegou a cada % de
+seções apuradas (pontos percentuais, no % de FLAVIO BOLSONARO):
+
+| Apurado (TSE) | Horário | Placar oficial | Projeção | O que a projeção já tinha lido |
+|---|---|---|---|---|
+| 5% | 19h31 | +0,8 | −3,1 | 5% do eleitorado |
+| 10% | 19h40 | +1,4 | −2,6 | 7% |
+| 25% | 20h04 | +2,3 | +0,1 | 23% |
+| 50% | 20h29 | +1,6 | +0,2 | 42% |
+| 75% | 21h00 | +0,3 | 0,0 | 68% |
+
+- **Começou mal.** Nas cinco primeiras atualizações publicadas (19h30 a 19h40,
+  com 5% a 7% do eleitorado lido), a projeção ficou de 2,6 a 3,1 pontos abaixo
+  do resultado final de FLAVIO BOLSONARO, e o resultado ficou fora da margem de
+  90%. Nesse começo, o placar oficial estava mais perto do final (0,8 a 1,4
+  ponto) do que a projeção. A chance mostrada para quem venceu já passava de 99%:
+  o lado estava certo, mas a margem era estreita demais para o erro que havia.
+- **Depois, convergiu.** A partir de 19h54 o erro ficou sempre abaixo de 1
+  ponto e, a partir de 20h, abaixo de 0,3.
+- **Lado do vencedor:** a projeção ficou do lado de quem venceu em todas as
+  atualizações. O placar oficial mostrou o outro candidato à frente até 20h25
+  (47% apurado).
+- **Margem:** o resultado final ficou dentro da margem de 90% em 92% das
+  atualizações entre 5% e 99,5% apurado. As que ficaram de fora foram as cinco
+  do começo. Contando o fim da noite, 83%: lá a margem fica mais estreita que os
+  milésimos de ponto que o resultado ainda mudou. Largura média da margem: 3,4
+  pontos com 5% a 10% lido, 2,8 com 10% a 25%, 2,2 com 25% a 50% e 1,4 com 50% a
+  75%.
+
+### O que deu errado na coleta
+
+1. **O TSE limitou os pedidos.** Entre 19h30 e 19h53, e de novo depois das
+   20h40, o servidor de resultados (Akamai) respondeu "pedidos demais" (HTTP
+   429) a parte dos arquivos. A projeção ficou atrás do TSE: às 19h40 o TSE já
+   tinha 10,9% das seções apuradas e ela, 6,9% do eleitorado. Em 17 das 118
+   rodadas o arquivo do Brasil não veio; o gráfico repete o último placar
+   recebido. Desde 19h53 o gravador pede menos: dois arquivos de cada vez, sem
+   repetir o pedido na hora, e no máximo 150 a 400 municípios por rodada,
+   começando pelos que mais avançaram.
+2. **Arquivo de município mais velho que o andamento.** O cache do TSE às vezes
+   entregava o arquivo de votos de um município ainda sem as seções que o
+   andamento da UF já dava como apuradas. O código contava essas seções como
+   apuradas sem nenhum voto e só baixava o município de novo na mudança
+   seguinte. Às 19h53, 331 municípios estavam assim. Na projeção, esses
+   municípios saíam da conta: os votos apurados (zero) e, a partir de 20%
+   apurado, também os que faltavam. Corrigido no gravador às 19h55: o arquivo
+   só conta se tiver pelo menos as seções do andamento. O site no ar naquela
+   noite ainda tinha o erro, corrigido depois.
+
+**O que não dá para saber só com a gravação:** quanto do erro do começo veio do
+modelo e quanto veio da coleta (municípios a menos e municípios zerados). O
+teste limpo é o mesmo feito com 2022: quando o TSE publicar os boletins de urna
+do 2º turno de 2026, com a hora de chegada de cada um, dá para reproduzir a
+noite seção por seção, sem os problemas de coleta.
+
+### Governador
+
+Placar oficial nas seis UFs com 2º turno (votos válidos, candidatos em ordem
+alfabética), na última leitura da noite:
+
+| UF | Candidatos |
+|---|---|
+| AC | ALAN RICK 33,79% · MAILZA ASSIS 66,21% |
+| AM | OMAR AZIZ 61,42% · PROFESSORA MARIA DO CARMO 38,58% (99,94% das seções) |
+| DF | CELINA LEÃO 57,18% · LEANDRO GRASS 42,82% |
+| ES | LORENZO PAZOLINI 52,17% · RICARDO FERRAÇO 47,83% |
+| RN | ALLYSON 49,23% · CADU DE LULA 50,77% |
+| TO | PROFESSORA DORINHA 35,48% · VICENTINHO JÚNIOR 64,52% |
+
+## Como gravar e analisar uma noite
 
 ```bash
-# terminal 1: coleta a cada minuto
-python scripts/coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
-# terminal 2: projeção a cada minuto (aparece a partir de 5% apurado)
-python scripts/previsao_ao_vivo.py --eleicao 6258 --intervalo 60
+# durante a apuração: uma linha por minuto em dados/ao_vivo/
+python scripts/gravar_noite.py --ate 2026-10-25T23:00:00-03:00
+# depois: arquivos do site, gráfico e números desta página
+python scripts/analisar_noite.py
 ```
 
-Em 07/10 os arquivos do 2º turno (eleição 6258) ainda não estavam publicados
-no site de resultados do TSE; o coletor espera e avisa "nenhum dado publicado
-ainda". Vale rodar de novo na semana da eleição para confirmar que os caminhos
-não mudaram.
+Se o processo cair, rodar de novo continua de onde parou (o estado dos
+municípios é salvo a cada rodada).
 
-## O que será publicado
-
-- Projeção com intervalo e probabilidade, sempre ao lado do placar oficial do TSE.
-- Gráfico da noite: placar oficial × projeção ao longo da apuração.
-- Depois da eleição: previsão × resultado real, incluindo os erros do modelo.
+A gravação bruta de 25/10/2026 (`dados/ao_vivo/noite_e6258.csv` e
+`noite_governador_e6260.csv`) está no repositório, como exceção à pasta
+`dados/`, porque uma noite de apuração não se repete.

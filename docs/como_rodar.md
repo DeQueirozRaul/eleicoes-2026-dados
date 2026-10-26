@@ -108,17 +108,20 @@ Para publicar na internet, siga [publicar_site.md](publicar_site.md).
 
 Deve terminar com "passed" e nenhum "failed".
 
-## 8. Na noite do 2º turno (25/10)
+## 8. Gravar uma noite de apuração
 
-Abra **dois** terminais na pasta do projeto:
+O site já acompanha a apuração sozinho. Para guardar a noite inteira e comparar
+depois a projeção com o resultado final (foi assim em 25/10/2026):
 
 ```bat
-:: terminal 1: baixa a apuração a cada minuto
-.venv\Scripts\python scripts\coletar_ao_vivo.py --eleicao 6258 --cargo 1 --intervalo 60
+:: durante a apuração: uma linha por minuto em dados\ao_vivo\
+.venv\Scripts\python scripts\gravar_noite.py --ate 2026-10-25T23:00:00-03:00
 
-:: terminal 2: calcula a projeção a cada minuto (aparece a partir de 5% apurado)
-.venv\Scripts\python scripts\previsao_ao_vivo.py --eleicao 6258 --intervalo 60
+:: depois: arquivos do site, gráfico e números de docs\previsao.md
+.venv\Scripts\python scripts\analisar_noite.py
 ```
+
+Se o processo cair, rode o mesmo comando de novo: ele continua de onde parou.
 
 ## Problemas comuns
 

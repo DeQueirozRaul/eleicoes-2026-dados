@@ -48,7 +48,7 @@ SECOES = [
     ("paginas/previsao.py", "Previsão do 2º turno", ":material/insights:",
      "O que o 1º turno, sozinho, diz sobre o 2º, com margem de erro e testes nas eleições passadas."),
     ("paginas/apuracao.py", "Apuração ao vivo", ":material/timer:",
-     "Na noite de 25/10, placar e projeção a cada minuto. Até lá, o teste com a noite de 2022."),
+     "O resultado do 2º turno e a noite de 25/10 minuto a minuto: placar oficial × projeção."),
     ("paginas/df.py", "Mapa do DF", ":material/location_city:",
      "Como votou cada região do Distrito Federal."),
     ("paginas/conferencia.py", "Conferência dos dados", ":material/fact_check:",

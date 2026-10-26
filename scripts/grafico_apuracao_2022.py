@@ -37,14 +37,11 @@ def pct(v: float) -> str:
     return f"{v * 100:.1f}%".replace(".", ",")
 
 
-def grafico(turno: int) -> Path | None:
-    arquivo = RAIZ / "dados" / "apuracao" / f"teste_ao_vivo_2022_{turno}t.csv"
-    if not arquivo.exists():
-        return None
-    r = pd.read_csv(arquivo, parse_dates=["momento"])
-    r = r[(r["pct_secoes"] >= 0.01) & (r["pct_secoes"] <= 0.995)]
-    final = float(r["pct_a_final"].iloc[0])
-
+def desenhar(r: pd.DataFrame, proj: pd.DataFrame, final: float, titulo: str, subtitulo: str, rodape: str,
+             destino: Path, placar_em: float = 1 / 3, placar_dy: int = -16, projecao_em: float = 1 / 3,
+             projecao_abaixo: bool = False, virada_dy: int = -34, aviso_a_esquerda: bool = False) -> Path:
+    """Placar oficial (`pct_a_apurado`) e projeção publicada (`proj`) ao longo da noite.
+    `placar_em` e `projecao_em` (fração da noite) e os deslocamentos posicionam os rótulos."""
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 11})
     fig, ax = plt.subplots(figsize=(11, 6.2), dpi=150)
     fig.patch.set_facecolor(SUPERFICIE)
@@ -52,25 +49,30 @@ def grafico(turno: int) -> Path | None:
 
     ax.axhline(0.5, color=GRADE, lw=1, zorder=1)
     ax.axhline(final, color=MUDO, lw=1.2, ls=(0, (4, 3)), zorder=2)
-    proj = r[r["pct_secoes"] >= MINIMO_APURADO]   # o que teria sido publicado
     ax.fill_between(proj["momento"], proj["pct_a_inferior"], proj["pct_a_superior"],
                     color=PROJECAO, alpha=0.18, lw=0, zorder=3)
     ax.plot(r["momento"], r["pct_a_apurado"], color=PLACAR, lw=2, zorder=4)
     ax.plot(proj["momento"], proj["pct_a_mediana"], color=PROJECAO, lw=2, zorder=5)
-    ax.annotate(f"projeção publicada a partir de {MINIMO_APURADO:.0%} apurado",
-                (proj["momento"].iloc[0], proj["pct_a_superior"].iloc[0]), xytext=(0, 8),
-                textcoords="offset points", color=MUDO, fontsize=9)
+    if aviso_a_esquerda:
+        ax.annotate(f"projeção publicada a partir\nde {MINIMO_APURADO:.0%} apurado",
+                    (proj["momento"].iloc[0], proj["pct_a_mediana"].iloc[0]), xytext=(-8, 0),
+                    textcoords="offset points", color=MUDO, fontsize=9, ha="right", va="center")
+    else:
+        ax.annotate(f"projeção publicada a partir de {MINIMO_APURADO:.0%} apurado",
+                    (proj["momento"].iloc[0], proj["pct_a_superior"].iloc[0]), xytext=(0, 8),
+                    textcoords="offset points", color=MUDO, fontsize=9)
 
     # rótulos diretos
-    fim = r.iloc[-1]
     ax.annotate("Resultado\nfinal " + pct(final), (r["momento"].iloc[-1], final), xytext=(10, 0),
                 textcoords="offset points", color=TINTA_2, fontsize=10, va="center", annotation_clip=False)
-    meio = r.iloc[len(r) // 3]
-    meio_proj = proj.iloc[len(proj) // 3]
-    ax.annotate("Placar oficial", (meio["momento"], meio["pct_a_apurado"]), xytext=(0, -16),
+    meio = r.iloc[int(len(r) * placar_em)]
+    meio_proj = proj.iloc[int(len(proj) * projecao_em)]
+    ax.annotate("Placar oficial", (meio["momento"], meio["pct_a_apurado"]), xytext=(0, placar_dy),
                 textcoords="offset points", color=TINTA, fontsize=10, fontweight="bold")
-    ax.annotate("Projeção ao vivo (faixa: intervalo de 90%)", (meio_proj["momento"], meio_proj["pct_a_superior"]),
-                xytext=(0, 8), textcoords="offset points", color=TINTA, fontsize=10, fontweight="bold")
+    borda = "pct_a_inferior" if projecao_abaixo else "pct_a_superior"
+    ax.annotate("Projeção ao vivo (faixa: intervalo de 90%)", (meio_proj["momento"], meio_proj[borda]),
+                xytext=(0, -16 if projecao_abaixo else 8), textcoords="offset points", color=TINTA, fontsize=10,
+                fontweight="bold")
 
     # quando a liderança muda no placar e na projeção
     lado_final = final > 0.5
@@ -80,7 +82,7 @@ def grafico(turno: int) -> Path | None:
         v = virada_placar.iloc[0]
         ax.scatter([v["momento"]], [v["pct_a_apurado"]], s=40, color=PLACAR, edgecolor=SUPERFICIE, lw=2, zorder=6)
         ax.annotate(f"{v['momento']:%Hh%M}: o placar oficial vira\n({pct(v['pct_secoes'])} apurado)",
-                    (v["momento"], v["pct_a_apurado"]), xytext=(10, -34), textcoords="offset points",
+                    (v["momento"], v["pct_a_apurado"]), xytext=(10, virada_dy), textcoords="offset points",
                     color=TINTA_2, fontsize=9.5)
 
     ax.yaxis.set_major_formatter(lambda v, _: pct(v))
@@ -95,19 +97,29 @@ def grafico(turno: int) -> Path | None:
     alto = max(r["pct_a_apurado"].max(), proj["pct_a_superior"].max())
     ax.set_ylim(baixo - 0.003, alto + 0.006)
 
-    titulo, subtitulo = TITULOS[turno]
     fig.text(0.06, 0.95, titulo, fontsize=15, fontweight="bold", color=TINTA)
     fig.text(0.06, 0.905, subtitulo, fontsize=10.5, color=TINTA_2)
-    fig.text(0.06, 0.018, "Fonte: TSE (boletins de urna e histórico de totalização). Apuração reproduzida seção por seção,\n"
-             "na hora em que cada boletim chegou ao TSE. Projeção: modelo deste projeto (github.com/DeQueirozRaul/eleicoes-2026-dados).",
-             fontsize=8.5, color=MUDO, linespacing=1.4)
+    fig.text(0.06, 0.018, rodape, fontsize=8.5, color=MUDO, linespacing=1.4)
     fig.subplots_adjust(left=0.06, right=0.9, top=0.86, bottom=0.13)
 
-    destino = RAIZ / "docs" / "img" / f"apuracao_2022_{turno}t.png"
     destino.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(destino, facecolor=SUPERFICIE)
     plt.close(fig)
     return destino
+
+
+def grafico(turno: int) -> Path | None:
+    arquivo = RAIZ / "dados" / "apuracao" / f"teste_ao_vivo_2022_{turno}t.csv"
+    if not arquivo.exists():
+        return None
+    r = pd.read_csv(arquivo, parse_dates=["momento"])
+    r = r[(r["pct_secoes"] >= 0.01) & (r["pct_secoes"] <= 0.995)]
+    titulo, subtitulo = TITULOS[turno]
+    return desenhar(
+        r, r[r["pct_secoes"] >= MINIMO_APURADO], float(r["pct_a_final"].iloc[0]), titulo, subtitulo,
+        "Fonte: TSE (boletins de urna e histórico de totalização). Apuração reproduzida seção por seção,\n"
+        "na hora em que cada boletim chegou ao TSE. Projeção: modelo deste projeto (github.com/DeQueirozRaul/eleicoes-2026-dados).",
+        RAIZ / "docs" / "img" / f"apuracao_2022_{turno}t.png")
 
 
 def main() -> None:
