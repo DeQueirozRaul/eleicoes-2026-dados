@@ -49,23 +49,19 @@ Para atualizar os dados (ex.: quando o TSE publicar algo novo), rode no seu
 computador `scripts\preparar_site.py`, faça commit dos arquivos de
 `app/dados/` e mande para a `main`.
 
-## 4. Na noite de 25/10
+## 4. A noite de 25/10
 
-- A página **Apuração ao vivo** começa a buscar os resultados no TSE sozinha às
-  16h45 (horário de Brasília) e atualiza a cada minuto. Não precisa deixar o
-  seu computador ligado. Quem já estiver com a página aberta entra no modo ao
-  vivo sem recarregar. Além de Presidente (placar e projeção), ela mostra o
-  placar de Governador no DF e nos outros 5 estados com 2º turno.
-- Até chegar o primeiro voto apurado, os cartões mostram "—" (e não 0% × 100%).
-- **Abra o site umas 16h30.** Sites do plano grátis "dormem" quando ficam um
-  tempo sem visitas; se aparecer um botão para acordar o app, clique e espere
-  cerca de 1 minuto.
-- **Não mande mudanças para a `main` durante a apuração.** Cada atualização
-  reinicia o site, e o gráfico da noite recomeça do zero (o placar e a
-  projeção continuam certos, só o histórico do gráfico se perde).
-- Se quiser guardar a noite inteira para analisar depois, rode também no seu
-  computador os dois comandos da seção "Na noite do 2º turno" do
-  [guia](como_rodar.md).
+Na noite do 2º turno, a página **Apuração ao vivo** buscou os resultados no TSE
+sozinha, a cada minuto, sem depender de nenhum computador ligado. Depois da
+noite, ela passou a mostrar a gravação da noite (`app/dados/noite_2026_2t.parquet`,
+feita com `scripts/gravar_noite.py` e `scripts/analisar_noite.py`): o
+resultado, o gráfico do placar oficial × projeção e o placar de Governador.
+
+Para uma próxima apuração ao vivo: ajuste `app/dados/ao_vivo_config.json`
+(código da eleição, finalistas, horário de início), apague o
+`noite_2026_2t.parquet` do site e não mande mudanças para a `main` durante a
+apuração (cada atualização reinicia o site e o gráfico da noite recomeça do
+zero).
 
 ## 5. Ver o site no seu computador antes de publicar
 

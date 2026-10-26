@@ -5,12 +5,13 @@ históricas, um olhar para o Brasil inteiro e um recorte específico do
 **Distrito Federal**. Tudo é feito a partir de dados oficiais e abertos (TSE e
 IBGE), com código aberto e reprodutível.
 
-![Placar oficial e projeção ao vivo na noite do 2º turno de 2022](docs/img/apuracao_2022_2t.png)
+![Placar oficial e projeção ao vivo na noite do 2º turno de 2026](docs/img/apuracao_2026_2t.png)
 
-*Teste da previsão ao vivo reproduzindo a apuração do 2º turno de 2022 seção por
-seção: a projeção ficou do lado do vencedor desde 5% apurado, mais de uma hora
-antes de o placar oficial virar (o mesmo aconteceu no 1º turno).
-[Como funciona](docs/previsao.md#parte-2-ao-vivo-durante-a-apuração).*
+*A noite do 2º turno de 2026, gravada minuto a minuto: a projeção ficou do lado
+de quem venceu em todas as atualizações, quase uma hora antes de o placar
+oficial virar. Mas começou mal: nos primeiros 10 minutos errou de 2,6 a 3,1
+pontos, mais que o placar oficial, e o resultado ficou fora da margem.
+[O que deu certo e o que deu errado](docs/previsao.md#a-noite-de-25102026).*
 
 **Para rodar no seu computador:** [passo a passo](docs/como_rodar.md).
 
@@ -28,7 +29,7 @@ a tabela com os números de cada gráfico
 | Patrimônio declarado | bens por cargo e partido e a evolução desde 2018, descontada a inflação |
 | Eleitorado | pirâmide etária, voto facultativo (16–17 e 70+), municípios com mais eleitores que habitantes, abstenção por perfil |
 | Previsão do 2º turno | previsão com margem de erro, teste nas eleições passadas e cenários dos eliminados |
-| Apuração ao vivo | na noite de 25/10, placar e projeção de Presidente a cada minuto, e o placar de Governador no DF e em mais 5 estados; até lá, o teste com 2022 |
+| Apuração ao vivo | o resultado do 2º turno, a noite de 25/10 gravada minuto a minuto (placar oficial × projeção), Governador no DF e em mais 5 estados, e o teste com as noites de 2022 |
 | Mapa do DF | as 35 regiões administrativas e os locais de votação do DF, 2022 e 2026 |
 | Conferência dos dados | as somas batem com o oficial? E por que a Lei de Benford não prova fraude |
 | Dinheiro de campanha | entra em novembro, quando fecharem as prestações de contas |
@@ -74,8 +75,9 @@ Toda análise foi testada contra dados reais antes de ser usada.
 | **Previsão do 2º turno antes da eleição** | "Escondemos" o resultado de cada eleição de 2002 a 2022 e tentamos prevê-lo usando só as outras cinco. | Em metade das eleições o erro foi de até 1,5 ponto; no pior caso (2006), 8,7 pontos. O resultado real ficou dentro da margem de erro do modelo em 5 das 6 eleições. |
 | **Cenários de transferência dos eliminados** | O mesmo teste, de 2006 a 2022. | Errou em média 3,4 pontos, mais que o modelo principal (2,7). Por isso é usado só para montar cenários, não como previsão. |
 | **Reprodução da apuração de 2022** | Reconstruímos a noite da apuração urna por urna e comparamos, minuto a minuto, com o registro oficial do TSE. | Quase idêntica: diferença média de 0,4 ponto no total de urnas apuradas e de 0,07 ponto no placar. |
-| **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Em 92% das atualizações, o resultado final estava dentro da margem de erro da projeção. |
+| **Previsão ao vivo: 2º turno de 2022** | Rodamos a previsão como se fosse aquela noite e comparamos com o resultado final (LULA 50,9%). | Com 10% das urnas apuradas, a projeção estava a **0,5 ponto** do resultado final, enquanto o placar oficial estava a **2,9 pontos**. Com metade apurada: 0,6 contra 1,2. Entre 5% e 99,5% apurado, o resultado final estava dentro da margem de erro da projeção em 98% das atualizações. |
 | **Previsão ao vivo: 1º turno de 2022** | O mesmo teste, com o placar entre LULA e JAIR BOLSONARO. | Com 10% apurado: **0,7 ponto** de erro, contra **5,8** do placar oficial. Com metade apurada: 0,4 contra 3,8. O resultado final esteve dentro da margem de erro em 100% das atualizações. |
+| **Previsão ao vivo: a noite de 25/10/2026** | O teste de verdade: gravamos o placar oficial e a projeção a cada minuto e comparamos com o resultado final (FLAVIO BOLSONARO 48,23%, LULA 51,77%). | Começou mal: com 5% a 7% apurado, a projeção errou de 2,6 a 3,1 pontos, mais que o placar oficial (0,8 a 1,4), e o resultado ficou fora da margem. Depois convergiu: com 25% apurado, **0,1 ponto** de erro, contra **2,3** do placar; com metade, 0,2 contra 1,6. Ficou do lado de quem venceu em todas as atualizações; o placar oficial só virou às 20h25. Dentro da margem em 92% das atualizações entre 5% e 99,5% apurado. |
 | **Leitura dos votos digitados na urna (RDV)** | Nas 8 disputas de Governador analisadas, somamos os votos de cada candidato lidos voto a voto no RDV e comparamos com o resultado oficial. | Bateu exatamente em 5 disputas; nas outras 3, diferença de no máximo 0,02% (uma urna ilegível no RS e votos em candidaturas indeferidas em SC e na BA). |
 | **Soma das seções × oficial (1º turno de 2026)** | Somamos os votos das 499.248 seções e comparamos com o resultado oficial, por candidato, UF e município. | Bateu exatamente. Os 5.246 votos no nº 28 (candidatura que renunciou) aparecem nas seções, mas o TSE os conta como nulos, e a conta dos nulos também fecha. |
 | **Mapa do DF** | Somamos as seções de cada local de votação e região administrativa e comparamos com o resultado do DF. | Bateu exatamente nas quatro disputas (Presidente 2022 e 2026, Governador 2026). |
@@ -149,8 +151,16 @@ Nas 8 disputas de Governador mais apertadas de 2022 e 2026:
   padrão, e a ferramenta de fotos do site (`scripts/ver_site.py`) é que passou a
   entregar o arquivo ao navegador de teste.
 - **Cuidado para não se enganar.** Os testes de 2022 já ajudaram a desenhar a
-  previsão ao vivo. O teste realmente independente será a noite de 25/10/2026,
-  e o resultado será publicado aqui, acertando ou errando.
+  previsão ao vivo. O teste realmente independente foi a noite de 25/10/2026,
+  publicado aqui com o que deu certo e o que deu errado.
+- **A noite real não seguiu o roteiro.** A votação foi prorrogada até as 19h e
+  o TSE parou a divulgação por duas horas. Depois, o servidor do TSE passou a
+  recusar parte dos pedidos ("pedidos demais"), e o gravador teve de pedir menos
+  no meio da apuração. E apareceu um erro que os testes com 2022 não pegavam:
+  o cache do TSE às vezes entregava o arquivo de um município mais velho que o
+  andamento, e o código contava seções apuradas sem nenhum voto. Os dois
+  problemas foram corrigidos durante a noite e estão descritos em
+  [docs/previsao.md](docs/previsao.md#o-que-deu-errado-na-coleta).
 
 ## Fontes de dados
 
@@ -252,7 +262,10 @@ order by m.regiao, pct desc;
 - [x] Recorte do Distrito Federal: mapa por região administrativa e local de votação
 - [x] Site em Streamlit com todas as análises e a apuração ao vivo
 - [x] Modelo de dados para o Power BI ([passo a passo](docs/powerbi.md))
-- [ ] Publicar o site ([como](docs/publicar_site.md))
+- [x] Publicar o site ([como](docs/publicar_site.md))
 - [ ] Painel no Power BI
-- [ ] Noite de 25/10: apuração ao vivo e comparação da previsão com o resultado
+- [x] Noite de 25/10: apuração ao vivo e comparação da previsão com o resultado
+      ([resultados](docs/previsao.md#a-noite-de-25102026))
+- [ ] Reproduzir a noite de 2026 seção por seção com os boletins de urna, quando
+      o TSE publicar (o teste limpo, sem os problemas de coleta da noite)
 - [ ] Dinheiro de campanha (novembro, quando fecharem as prestações de contas)

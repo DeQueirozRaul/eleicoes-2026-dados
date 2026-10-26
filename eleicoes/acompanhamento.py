@@ -62,6 +62,7 @@ class Acompanhamento:
     paralelos: int = 6
     cenarios: int = 3000
     cliente: ClienteTSE = field(default_factory=ClienteTSE)
+    maximo_por_rodada: int | None = None   # limite de municípios baixados por rodada (o resto fica para a próxima)
 
     def __post_init__(self):
         self.municipios: dict[tuple[str, str], dict] = {}
@@ -94,9 +95,13 @@ class Acompanhamento:
                 lambda uf: self._seguro(self.cliente.andamento, self.eleicao, uf), UFS) if a is not None]
         return pd.concat(partes, ignore_index=True) if partes else pd.DataFrame()
 
-    def _votos(self, uf: str, municipio: str) -> tuple[str, str, int, int] | None:
+    def _votos(self, uf: str, municipio: str, secoes: int = 0) -> tuple[str, str, int, int] | None:
         r = self._seguro(self.cliente.resultado, self.eleicao, self.cargo, uf, municipio)
         if r is None or r.candidatos.empty:
+            return None
+        if r.resumo.get("qt_secoes_totalizadas", secoes) < secoes:
+            # o cache do TSE às vezes entrega o arquivo do município mais velho que o andamento:
+            # não vale como apurado; é pedido de novo na próxima rodada
             return None
         numeros = r.candidatos["nr_candidato"].astype(int)
         qt_a = int(r.candidatos.loc[numeros == self.nr_a, "qt_votos"].sum())
@@ -127,8 +132,13 @@ class Acompanhamento:
             versao = (m.qt_secoes_totalizadas, m.dt_totalizacao)
             if m.qt_secoes_totalizadas > 0 and self.versao.get(chave) != versao:
                 mudaram.append((chave, versao, m.qt_eleitores_secoes_totalizadas))
+        if self.maximo_por_rodada is not None and len(mudaram) > self.maximo_por_rodada:
+            # quando o TSE limita os pedidos: primeiro os municípios que mais avançaram;
+            # os outros continuam com a versão antiga e entram nas próximas rodadas
+            mudaram.sort(key=lambda item: item[2] - self.municipios[item[0]]["qt_aptos_apurados"], reverse=True)
+            mudaram = mudaram[:self.maximo_por_rodada]
         with ThreadPoolExecutor(max_workers=self.paralelos) as executor:
-            resultados = list(executor.map(lambda item: self._votos(*item[0]), mudaram))
+            resultados = list(executor.map(lambda item: self._votos(*item[0], item[1][0]), mudaram))
         # o eleitorado apurado só avança junto com os votos: se o download de um
         # município falhar, ele fica como estava e é tentado de novo na próxima rodada
         for (chave, versao, apurados), votos in zip(mudaram, resultados):

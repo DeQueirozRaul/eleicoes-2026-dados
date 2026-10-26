@@ -17,6 +17,9 @@ from eleicoes.ao_vivo import MINIMO_APURADO, Parametros  # noqa: E402
 from eleicoes.tse_ao_vivo import FUSO_BRASILIA, ClienteTSE  # noqa: E402
 
 PLACAR, PROJECAO = comum.SERIE, comum.DESTAQUE
+# Depois de 99,5% apurado a margem fica mais estreita que os milésimos de ponto que ainda mudam;
+# a cobertura da margem é medida de 5% a 99,5% apurado (2022 e 2026 do mesmo jeito)
+FIM_COBERTURA = 0.995
 CONFIG = json.loads((comum.DADOS / "ao_vivo_config.json").read_text(encoding="utf-8"))
 INICIO = datetime.fromisoformat(CONFIG["inicio_apuracao"])
 # Para testar fora da noite da eleição: AO_VIVO_ELEICAO=6257 (1º turno, já apurado)
@@ -194,8 +197,45 @@ def painel_governador() -> None:
                "deste site é só para Presidente. Atualiza a cada minuto.")
 
 
+def resultado_2026(noite: pd.DataFrame) -> None:
+    final = noite.iloc[-1]
+    votos = {A["nm_urna"]: int(final["qt_a_final"]), B["nm_urna"]: int(final["qt_b_final"])}
+    validos = sum(votos.values())
+    st.markdown(f"**Resultado com {comum.pct(final['pct_secoes_final'], 2)} das seções apuradas** "
+                "(votos válidos; quem proclama o resultado é o TSE)")
+    for coluna, nome in zip(st.columns(2), sorted(votos)):
+        with coluna:
+            comum.cartao(nome, comum.pct(votos[nome] / validos, 2), f"{comum.numero(votos[nome])} votos",
+                         cor=CORES[nome])
+
+
+def governador_2026(gov: pd.DataFrame) -> None:
+    ufs = CONFIG.get("ufs_governador_2t", ["df"])
+    uf = st.selectbox("Estado", ufs, format_func=lambda u: UF_NOMES.get(u, u.upper()), key="uf_governador_final")
+    da_uf = gov[gov["uf"] == uf.upper()]
+    if da_uf.empty:
+        st.info("A gravação da noite não tem o resultado deste estado.", icon=":material/info:")
+        return
+    ultima = da_uf[da_uf["momento"] == da_uf["momento"].max()]
+    st.markdown(f"**{comum.pct(ultima['pct_secoes'].iloc[0], 2)} das seções apuradas** · última leitura da noite, "
+                f"às {ultima['momento'].iloc[0]:%H:%M}")
+    nomes = sorted(ultima["nm_urna"])
+    cores = comum.cores_finalistas(nomes)
+    for coluna, nome in zip(st.columns(2), nomes):
+        linha = ultima[ultima["nm_urna"] == nome].iloc[0]
+        with coluna:
+            comum.cartao(f"{nome} ({linha['sg_partido']})", comum.pct(linha["pct_validos"], 2),
+                         f"{comum.numero(linha['qt_votos'])} votos", cor=cores[nome])
+    st.caption("Placar oficial do TSE nos votos válidos, sem projeção (a projeção deste site é só para Presidente).")
+
+
 agora = datetime.now(FUSO_BRASILIA)
-if "AO_VIVO_ELEICAO" in os.environ or agora >= INICIO - timedelta(minutes=15):
+NOITE_GRAVADA = comum.existe("noite_2026_2t") and "AO_VIVO_ELEICAO" not in os.environ
+if NOITE_GRAVADA:
+    noite_2026 = comum.ler("noite_2026_2t")
+    st.subheader("2º turno de 2026: resultado")
+    resultado_2026(noite_2026)
+elif "AO_VIVO_ELEICAO" in os.environ or agora >= INICIO - timedelta(minutes=15):
     st.subheader("2º turno de 2026")
     painel_ao_vivo()
     st.subheader("Governador, 2º turno (DF e outros 5 estados)")
@@ -216,23 +256,18 @@ else:
 
         aguardar_inicio()
 
-st.subheader("O teste: a noite de 2022 reproduzida seção por seção")
-st.markdown(
-    "Usando a hora em que cada boletim de urna chegou ao TSE, reconstruímos a apuração de 2022 minuto a minuto e "
-    "rodamos a projeção como se fosse aquela noite, sem saber o resultado final. O gráfico mostra o % do "
-    "1º colocado do 1º turno (LULA) nos votos dos dois primeiros (o de JAIR BOLSONARO é 100% menos esse valor)."
-)
-
 
 def momento_em(teste: pd.DataFrame, fracao: float) -> pd.Series:
     return teste[teste["pct_secoes"] >= fracao].iloc[0]
 
 
-def mostrar_noite(teste: pd.DataFrame, turno: int) -> None:
+def mostrar_noite(teste: pd.DataFrame, nome_a: str, eixo_y: str, fonte: str, chave: str) -> None:
     final = teste["pct_a_final"].iloc[0]
-    publicada = teste[teste["pct_secoes"] >= MINIMO_APURADO]
+    # publicada a partir de 5% do que a projeção já tinha lido (em 2022, o mesmo que o % apurado)
+    vista = teste["pct_secoes_projecao"] if "pct_secoes_projecao" in teste else teste["pct_secoes"]
+    publicada = teste[(vista >= MINIMO_APURADO) & teste["pct_a_mediana"].notna()]
     em10, em50 = momento_em(teste, 0.10), momento_em(teste, 0.50)
-    cobertura = publicada["final_no_intervalo"].mean()
+    cobertura = publicada.loc[publicada["pct_secoes"] <= FIM_COBERTURA, "final_no_intervalo"].astype(float).mean()
 
     c1, c2, c3 = st.columns(3)
     with c1:
@@ -245,7 +280,7 @@ def mostrar_noite(teste: pd.DataFrame, turno: int) -> None:
                      cor=PROJECAO)
     with c3:
         comum.cartao("Resultado final dentro da margem", comum.pct(cobertura, 0),
-                     "das atualizações da projeção (margem de 90%)")
+                     "das atualizações da projeção entre 5% e 99,5% apurado (margem de 90%)")
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -267,38 +302,97 @@ def mostrar_noite(teste: pd.DataFrame, turno: int) -> None:
                   annotation_text=f"resultado final: {comum.pct(final)}", annotation_position="top right",
                   annotation_font=dict(color=comum.TINTA_2, size=12))
     fig.update_xaxes(tickformat="%H:%M", title="horário de Brasília")
-    fig.update_yaxes(tickformat=".0%", title="% de LULA nos votos dos dois primeiros",
+    fig.update_yaxes(tickformat=".0%", title=eixo_y,
                      range=[min(0.40, teste["pct_a_apurado"].min() - 0.01), max(0.60, teste["pct_a_apurado"].max() + 0.01)])
     comum.estilo(fig, altura=430)
 
     tabela = teste.iloc[::5]
+    publicado = (vista.loc[tabela.index] >= MINIMO_APURADO) & tabela["pct_a_mediana"].notna()
     comum.mostrar(
         fig,
         tabela=pd.DataFrame({
             "Horário": tabela["momento"].dt.strftime("%H:%M"),
             "Seções apuradas": tabela["pct_secoes"].map(lambda x: comum.pct(x, 0)),
-            "Placar oficial (LULA)": tabela["pct_a_apurado"].map(comum.pct),
-            "Projeção (LULA)": [comum.pct(m) if s >= MINIMO_APURADO else "—"
-                                for m, s in zip(tabela["pct_a_mediana"], tabela["pct_secoes"])],
+            f"Placar oficial ({nome_a})": tabela["pct_a_apurado"].map(comum.pct),
+            f"Projeção ({nome_a})": [comum.pct(m) if p else "—" for m, p in zip(tabela["pct_a_mediana"], publicado)],
             "Erro do placar": tabela["erro_placar_pp"].map(lambda x: comum.pontos(x / 100)),
-            "Erro da projeção": [comum.pontos(e / 100) if s >= MINIMO_APURADO else "—"
-                                 for e, s in zip(tabela["erro_projecao_pp"], tabela["pct_secoes"])],
+            "Erro da projeção": [comum.pontos(e / 100) if p else "—"
+                                 for e, p in zip(tabela["erro_projecao_pp"], publicado)],
         }),
-        fonte=f"TSE (boletins de urna e histórico da totalização do {turno}º turno de 2022); cálculo do projeto.",
-        chave=f"noite_{turno}",
+        fonte=fonte,
+        chave=chave,
     )
 
 
+def explicar_noite(noite: pd.DataFrame) -> str:
+    """Os números do texto vêm da gravação, não escritos à mão."""
+    final = noite["pct_a_final"].iloc[0]
+    publicada = noite[noite["pct_a_mediana"].notna()].reset_index(drop=True)
+    dentro = publicada["final_no_intervalo"].astype(bool)
+    comeco_fora = publicada.iloc[:int(dentro.idxmax()) if dentro.any() else len(publicada)]   # primeiras, fora da margem
+    longe = publicada[publicada["erro_projecao_pp"].abs() >= 1]
+    perto_desde = publicada[publicada["momento"] > longe["momento"].max()] if len(longe) else publicada
+    lado_final = final > 0.5
+    errado = noite[(noite["pct_a_apurado"] > 0.5) != lado_final]
+    virada = noite[noite["momento"] > errado["momento"].max()].iloc[0] if len(errado) else None
+    certo = ((publicada["pct_a_mediana"] > 0.5) == lado_final).mean()
+    partes = []
+    if len(comeco_fora):
+        erros = comeco_fora["erro_projecao_pp"].abs() / 100
+        partes.append(
+            f"Nas primeiras atualizações da projeção ({comeco_fora['momento'].iloc[0]:%Hh%M} a "
+            f"{comeco_fora['momento'].iloc[-1]:%Hh%M}, com até {comum.pct(comeco_fora['pct_secoes_projecao'].max(), 0)} "
+            f"do eleitorado já lido), ela ficou de {comum.pontos(erros.min()).split()[0]} a {comum.pontos(erros.max())} longe do "
+            "resultado final, que ficou fora da margem.")
+    if len(perto_desde):
+        partes.append(f"A partir de {perto_desde['momento'].iloc[0]:%Hh%M}, o erro ficou sempre abaixo de 1 ponto.")
+    if virada is not None:
+        partes.append(f"O placar oficial só passou a mostrar à frente quem venceu às {virada['momento']:%Hh%M}, com "
+                      f"{comum.pct(virada['pct_secoes'], 0)} das seções apuradas.")
+    partes.append(f"A projeção ficou do lado de quem venceu em {comum.pct(certo, 0)} das atualizações publicadas.")
+    return " ".join(partes)
+
+
+if NOITE_GRAVADA:
+    st.subheader("A noite de 25/10/2026: placar oficial × projeção")
+    st.markdown(
+        "A votação foi prorrogada até as 19h por decisão do STF, e o TSE parou a divulgação com 0,25% das seções "
+        "apuradas, das 17h06 às 19h01. O gráfico mostra a noite a partir daí, lida do TSE a cada minuto pelo mesmo "
+        f"código deste site. {explicar_noite(noite_2026)}"
+    )
+    mostrar_noite(noite_2026, A["nm_urna"], f"% de {A['nm_urna']} nos votos válidos",
+                  "TSE (resultados divulgados ao vivo em 25/10/2026, lidos a cada minuto); projeção calculada pelo "
+                  "projeto.", "noite_2026")
+    st.caption(
+        f"**Como ler:** % de {A['nm_urna']} nos votos válidos (o de {B['nm_urna']} é 100% menos esse valor). A linha "
+        "azul é o placar que o TSE mostrava em cada momento; a laranja, a projeção, com a faixa da margem. Entre "
+        "19h30 e 19h53 e depois das 20h40 o servidor do TSE recusou parte dos pedidos, e a projeção trabalhou com "
+        "menos municípios do que o TSE já tinha apurado. Os detalhes, inclusive o que deu errado, estão em "
+        "docs/previsao.md."
+    )
+    st.subheader("Governador, 2º turno (DF e outros 5 estados)")
+    governador_2026(comum.ler("noite_2026_governador"))
+
+st.subheader("O teste: a noite de 2022 reproduzida seção por seção")
+st.markdown(
+    "Usando a hora em que cada boletim de urna chegou ao TSE, reconstruímos a apuração de 2022 minuto a minuto e "
+    "rodamos a projeção como se fosse aquela noite, sem saber o resultado final. O gráfico mostra o % do "
+    "1º colocado do 1º turno (LULA) nos votos dos dois primeiros (o de JAIR BOLSONARO é 100% menos esse valor)."
+)
+
+FONTE_2022 = "TSE (boletins de urna e histórico da totalização do {}º turno de 2022); cálculo do projeto."
 abas = st.tabs(["2º turno de 2022", "1º turno de 2022"])
 with abas[0]:
-    mostrar_noite(comum.ler("apuracao_2022_2t"), 2)
+    mostrar_noite(comum.ler("apuracao_2022_2t"), "LULA", "% de LULA nos votos válidos", FONTE_2022.format(2),
+                  "noite_2")
     st.caption(
         "**Como ler:** a linha azul é o placar que o TSE mostrava em cada momento; a laranja, a projeção, com a "
         "faixa da margem. Naquela noite o placar oficial só virou às 18h44, com 68% apurado; a projeção ficou do "
         "lado do vencedor desde que começou a ser publicada (5% apurado)."
     )
 with abas[1]:
-    mostrar_noite(comum.ler("apuracao_2022_1t"), 1)
+    mostrar_noite(comum.ler("apuracao_2022_1t"), "LULA", "% de LULA nos votos dos dois primeiros",
+                  FONTE_2022.format(1), "noite_1")
     st.caption(
         "**Como ler:** no 1º turno, o placar considera só os dois primeiros colocados. Os municípios pequenos "
         "apuram primeiro e votaram diferente das capitais, e por isso o placar parcial ficou longe do final por "
@@ -315,8 +409,8 @@ st.markdown(
 3. **Leva em conta o tamanho dos municípios**, porque os pequenos apuram primeiro e votam diferente das capitais.
 4. **Só aparece a partir de 5% das seções apuradas**, porque antes disso oscila demais.
 
-O teste de 2022 ajudou a desenhar a projeção; o teste realmente independente será a noite de 25/10/2026,
-e o resultado será publicado aqui, acertando ou errando.
+O teste de 2022 ajudou a desenhar a projeção; o teste realmente independente foi a noite de 25/10/2026,
+mostrada no início desta página, com acertos e erros.
 """
 )
 comum.rodape("docs/previsao.md")

@@ -23,6 +23,22 @@ def faixa(linha, nome: str) -> tuple[float, float, float, float]:
             1 - linha["prob_a_vence"])
 
 
+if comum.existe("noite_2026_2t"):
+    final = comum.ler("noite_2026_2t").iloc[-1]
+    pct_final = final["qt_a_final"] / (final["qt_a_final"] + final["qt_b_final"])
+    resultado = {A: pct_final, B: 1 - pct_final}
+    dentro = p["pct_a_inferior"] <= pct_final <= p["pct_a_superior"]
+    st.info(
+        "**Resultado do 2º turno (TSE):** " + " e ".join(f"{n} {comum.pct(resultado[n], 2)}" for n in sorted(resultado))
+        + f" dos votos válidos. A previsão abaixo, feita antes da eleição só com o 1º turno, dava "
+        f"{comum.pct(p['pct_a_mediana'])} para {A} (margem de {comum.pct(p['pct_a_inferior'])} a "
+        f"{comum.pct(p['pct_a_superior'])}): erro de {comum.pontos(abs(p['pct_a_mediana'] - pct_final))}, com o "
+        f"resultado {'dentro' if dentro else 'fora'} da margem. A comparação com a projeção ao vivo está na página "
+        "Apuração ao vivo.",
+        icon=":material/how_to_vote:",
+    )
+
+
 # --- resumo ------------------------------------------------------------------
 st.subheader("O resultado do 1º turno não aponta quem fica à frente")
 colunas = st.columns(2)

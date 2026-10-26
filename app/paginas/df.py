@@ -211,7 +211,8 @@ st.markdown(
   no local antigo.
 - **A soma bate com o oficial:** somando as seções, os votos de cada candidato no DF são iguais ao resultado oficial
   do TSE nas quatro disputas.
-- **Governador:** no DF, CELINA LEÃO e LEANDRO GRASS disputam o 2º turno em 25/10.
+- **Governador:** no DF, CELINA LEÃO e LEANDRO GRASS disputaram o 2º turno em 25/10 (o placar final está na
+  página Apuração ao vivo).
 """
 )
 comum.rodape()
