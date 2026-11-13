@@ -14,6 +14,8 @@ pontos, mais que o placar oficial, e o resultado ficou fora da margem.
 [O que deu certo e o que deu errado](docs/previsao.md#a-noite-de-25102026).*
 
 **Para rodar no seu computador:** [passo a passo](docs/como_rodar.md).
+**Para entender o código:** [guia do código](docs/guia_do_codigo/README.md), em 8 partes,
+do caminho dos dados aos modelos, ao site e aos testes.
 
 ## O site
 
@@ -35,7 +37,8 @@ a tabela com os números de cada gráfico
 | Dinheiro de campanha | quanto as candidaturas arrecadaram e gastaram, de onde veio o dinheiro, o fundo eleitoral para mulheres e para pessoas pretas e pardas, e quanto custou cada voto |
 
 Para abrir no seu computador: `.venv\Scripts\python -m streamlit run app/site.py`.
-O mesmo modelo de dados sai pronto para o **Power BI** ([passo a passo](docs/powerbi.md)).
+O mesmo modelo de dados sai pronto para o **Power BI**: as tabelas estão em
+[`powerbi/dados/`](powerbi/dados) e o [tutorial](docs/powerbi.md) vai do zero ao painel.
 
 ## ⚖️ Compromisso de neutralidade
 

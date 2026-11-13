@@ -55,18 +55,22 @@ def main() -> None:
     con.close()
     SAIDA.mkdir(parents=True, exist_ok=True)
 
-    validacao = validar(dados, finalistas, cenarios=5000)
+    # Só as eleições anteriores à prevista: depois de 25/10/2026 o banco também tem o 2º turno de
+    # 2026, e treinar com ele seria prever um resultado já sabendo a resposta.
+    historico = dados[dados["ano"] < ANO_ALVO]
+    validacao = validar(historico, finalistas, cenarios=5000)
     validacao.to_csv(SAIDA / "validacao_historica.csv", index=False)
 
     alvo = dados[dados["ano"] == ANO_ALVO]
     nomes = finalistas[finalistas["ano"] == ANO_ALVO].set_index("finalista")["nm_urna"]
-    modelo = ajustar(dados)
+    modelo = ajustar(historico)
     sim = simular(modelo, alvo, cenarios=20_000)
 
     sensibilidade = {
         "modelo principal": sim.resumo(),
-        "sem a eleição de 2006 no treino": simular(ajustar(dados[dados["ano"] != 2006]), alvo, 10_000).resumo(),
-        "mudança igual em todos os municípios": simular(ajustar(dados, termos=()), alvo, 10_000).resumo(),
+        "sem a eleição de 2006 no treino": simular(ajustar(historico[historico["ano"] != 2006]), alvo,
+                                                   10_000).resumo(),
+        "mudança igual em todos os municípios": simular(ajustar(historico, termos=()), alvo, 10_000).resumo(),
     }
 
     por_municipio = sim.por_municipio.merge(municipios, on=["uf", "cd_municipio_tse"], how="left")

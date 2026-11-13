@@ -15,13 +15,17 @@ Tabelas:
     fato_votos         votos para Presidente por eleição, turno, município e candidato
     fato_comparecimento  aptos, comparecimento, abstenção, brancos, nulos e válidos
     fato_candidaturas  candidaturas de 2018, 2022 e 2026 (todos os cargos), com perfil,
-                       resultado e patrimônio declarado (se scripts/site_candidatos.py já rodou)
+                       resultado e patrimônio declarado (se scripts/site_candidatos.py já rodou);
+                       em 2026, também votos no 1º turno e dinheiro de campanha (contas finais do
+                       1º turno, com as mesmas regras da página do site; se scripts/site_dinheiro.py
+                       já rodou)
     fato_eleitorado    eleitorado de 2026 por UF, gênero, faixa etária e escolaridade
                        (se scripts/site_eleitorado.py já rodou)
 """
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import duckdb
@@ -123,6 +127,36 @@ def fatos(con: duckdb.DuckDBPyConnection) -> None:
     """).df(), "fato_comparecimento")
 
 
+def dinheiro_2026() -> pd.DataFrame | None:
+    """Votos no 1º turno e dinheiro de campanha de cada candidatura de 2026 (em reais inteiros),
+    com as regras de scripts/site_dinheiro.py: só contas finais do 1º turno, sem contar duas vezes
+    o que passou de um candidato a outro."""
+    if not (RAIZ / "dados" / "brutos" / "contas" / "receitas.parquet").exists():
+        print("  dinheiro de 2026: pulado (rode antes scripts/site_dinheiro.py)")
+        return None
+    sys.path.insert(0, str(RAIZ / "scripts"))
+    import site_dinheiro
+
+    con = duckdb.connect()
+    site_dinheiro.carregar(con)
+    receitas = con.sql("select sq_candidato, categoria, sum(valor) as valor from receitas group by all").df()
+    tabela = receitas.pivot_table(index="sq_candidato", columns="categoria", values="valor", aggfunc="sum",
+                                  fill_value=0)
+    colunas = {"Fundo eleitoral": "vr_fundo_eleitoral", "Fundo partidário": "vr_fundo_partidario",
+               "Partido (outros recursos)": "vr_partido_outros", "Pessoas físicas": "vr_pessoas_fisicas",
+               "Recursos próprios": "vr_recursos_proprios", "Outros": "vr_outras_receitas"}
+    tabela = tabela.reindex(columns=list(colunas), fill_value=0).rename(columns=colunas)
+    tabela["vr_receitas"] = tabela.sum(axis=1)
+    despesas = con.sql("select sq_candidato, sum(valor) as vr_despesas from despesas group by 1").df()
+    tabela = tabela.reset_index().merge(despesas, on="sq_candidato", how="outer")
+    tabela = tabela.merge(site_dinheiro.votos_1t().rename(columns={"votos": "qt_votos_1t"}), on="sq_candidato",
+                          how="outer")
+    valores = [c for c in tabela.columns if c.startswith("vr_")]
+    tabela[valores] = tabela[valores].fillna(0).round().astype("int64")   # reais inteiros: sem vírgula decimal
+    tabela["qt_votos_1t"] = tabela["qt_votos_1t"].astype("Int64")
+    return tabela
+
+
 def candidaturas() -> None:
     origem = RAIZ / "dados" / "brutos" / "candidatos" / "candidaturas.parquet"
     if not origem.exists():
@@ -131,6 +165,15 @@ def candidaturas() -> None:
     tabela = pd.read_parquet(origem)
     # as candidaturas pertencem à eleição do ano; ligamos ao 1º turno em dim_eleicao
     tabela.insert(0, "id_eleicao", tabela["ano"] * 10 + 1)
+    extra = dinheiro_2026()
+    if extra is not None:
+        tabela["sq_candidato"] = tabela["sq_candidato"].astype(str)
+        tabela = tabela.merge(extra, on="sq_candidato", how="left")
+        # só 2026 tem esses números; nos outros anos (e para quem não entregou as contas finais) ficam
+        # vazios, e não zero. Inteiros com vazio ("Int64"): no CSV saem sem ".0"
+        for coluna in [c for c in extra.columns if c != "sq_candidato"]:
+            tabela[coluna] = tabela[coluna].astype("Int64")
+            tabela.loc[tabela["ano"] != 2026, coluna] = pd.NA
     salvar(tabela, "fato_candidaturas")
 
 
