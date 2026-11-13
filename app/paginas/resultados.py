@@ -235,17 +235,23 @@ if segundo is not None:
         comum.cartao("Foram votar", comum.pct(segundo["qt_comparecimento"].sum() / segundo["qt_aptos"].sum()),
                      f"{comum.numero(segundo['qt_comparecimento'].sum())} de "
                      f"{comum.numero(segundo['qt_aptos'].sum())} eleitores")
+    def municipios_txt(n: int) -> str:
+        return f"{comum.numero(n)} {'município' if n == 1 else 'municípios'}"
+
+    def passaram(nome: str) -> str:
+        n = int((viraram["mais_votado"] == nome).sum())
+        return f"{comum.numero(n)} {'passou' if n == 1 else 'passaram'} a ter **{nome}** à frente"
+
     st.markdown(
-        f"Do 1º para o 2º turno, **{comum.numero(len(viraram))} municípios** mudaram de quem ficou à frente: "
-        + " e ".join(f"{comum.numero(int((viraram['mais_votado'] == nome).sum()))} passaram a ter **{nome}** à frente"
-                     for nome in (A, B))
+        f"Do 1º para o 2º turno, **{municipios_txt(len(viraram))}** mudaram de quem ficou à frente: "
+        + " e ".join(passaram(nome) for nome in (A, B))
         + ". Os votos do exterior entram no total, mas não aparecem no mapa. Quem proclama o resultado é o TSE."
     )
     secao_mapa_2t()
     transicao_2t = no_mapa["transicao"].value_counts()
     st.caption(
         "Comparado com o 2º turno de 2022 (os mesmos dois números, 22 e 13): "
-        + "; ".join(f"{rotulo}: {comum.numero(n)} municípios" for rotulo, n in transicao_2t.items()) + "."
+        + "; ".join(f"{rotulo}: {municipios_txt(int(n))}" for rotulo, n in transicao_2t.items()) + "."
     )
 
 # --- 1. placar nacional ---------------------------------------------------------

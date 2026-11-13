@@ -140,7 +140,7 @@ A previsão por UF e por município fica em `dados/modelo/` (gerada pelo script)
 
 ### Como ficou
 
-Resultado do TSE: FLAVIO BOLSONARO 48,23% e LULA 51,77% dos votos válidos.
+Resultado do TSE: FLAVIO BOLSONARO 48,21% e LULA 51,79% dos votos válidos.
 
 | Escolha | Previsto (FLAVIO BOLSONARO) | Intervalo 90% | Erro | Resultado dentro do intervalo? |
 |---|---|---|---|---|
@@ -361,9 +361,10 @@ uma regra simples.
 
 ## A noite de 25/10/2026
 
-Resultado do TSE: **FLAVIO BOLSONARO 48,23%** e **LULA 51,77%** dos votos
-válidos, com 99,93% das seções apuradas (o resto não muda o resultado nem na
-segunda casa decimal). A projeção foi gravada a cada minuto pelo
+Resultado do TSE: **FLAVIO BOLSONARO 48,21%** e **LULA 51,79%** dos votos
+válidos (59.826.041 e 64.256.232 votos, 100% das seções). Na noite, a gravação
+parou com 99,93% apurado (48,23% × 51,77%); a comparação abaixo usa o resultado
+final. A projeção foi gravada a cada minuto pelo
 [`scripts/gravar_noite.py`](../scripts/gravar_noite.py), que roda o mesmo código
 do site, e comparada com o resultado pelo
 [`scripts/analisar_noite.py`](../scripts/analisar_noite.py).

@@ -81,7 +81,8 @@ def resultados_2t(con) -> pd.DataFrame:
     m["lado_2026"] = lado(m["votos_22"], m["votos_13"])
     m["transicao"] = [("sem resultado em 2022" if pd.isna(a) else f"{a} nas duas" if a == b
                        else f"{a} em 2022 → {b} em 2026") for a, b in zip(m["lado_2022"], m["lado_2026"])]
-    m["mudou_desde_o_1t"] = m["mais_votado"] != m["mais_votado_1t"]
+    # só onde se conhece o 1º turno (o exterior não está no arquivo do 1º turno por município)
+    m["mudou_desde_o_1t"] = (m["mais_votado"] != m["mais_votado_1t"]) & m["mais_votado_1t"].notna()
     return m.sort_values(["uf", "cd_municipio_tse"]).reset_index(drop=True)
 
 
