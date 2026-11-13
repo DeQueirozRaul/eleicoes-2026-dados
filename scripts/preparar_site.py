@@ -23,6 +23,8 @@ ETAPAS = {
     "ao_vivo": "Ponto de partida da projeção ao vivo do 2º turno",
     "resultados": "Resultados e mapa (baixa a malha de municípios do IBGE e resultados do TSE)",
     "candidatos": "Perfil dos candidatos e patrimônio (baixa candidatos e bens de 2018, 2022 e 2026)",
+    # depois de "candidatos": usa o cadastro e os votos baixados por ele
+    "dinheiro": "Dinheiro de campanha (baixa a prestação de contas dos candidatos, ~450 MB)",
     "eleitorado": "Eleitorado (baixa o perfil do eleitorado e a população do IBGE)",
     "conferencia": "Conferência dos dados (baixa a votação por seção de 2026)",
     "df": "Mapa do Distrito Federal",
