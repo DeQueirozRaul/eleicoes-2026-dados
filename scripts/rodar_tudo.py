@@ -31,9 +31,9 @@ ESSENCIAL = [
 
 COMPLETO = [
     ("Baixar os boletins de urna do 2º turno de 2022 (hora de chegada de cada urna)",
-     ["baixar_boletins_2022.py", "--turno", "2"], "dados/brutos/bweb_2022_2t/"),
+     ["baixar_boletins.py", "--turno", "2"], "dados/brutos/bweb_2022_2t/"),
     ("Baixar os boletins de urna do 1º turno de 2022 (~1,2 GB, demora)",
-     ["baixar_boletins_2022.py", "--turno", "1"], "dados/brutos/bweb_2022_1t/"),
+     ["baixar_boletins.py", "--turno", "1"], "dados/brutos/bweb_2022_1t/"),
     ("Reproduzir a apuração de 2022 e conferir com o histórico oficial",
      ["reproduzir_apuracao_2022.py"], "dados/apuracao/comparacao_curva_2022.csv"),
     ("Testar a previsão ao vivo na noite do 2º turno de 2022",

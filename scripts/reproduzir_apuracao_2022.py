@@ -6,7 +6,7 @@ Cada seção entra na contagem no momento em que o boletim de urna chegou ao TSE
 (DT_BU_RECEBIDO). Se a curva reproduzida bater com o histórico oficial, essa
 reprodução serve para testar a previsão ao vivo "como se fosse aquela noite".
 
-Antes: scripts/baixar_boletins_2022.py --turno 2 e scripts/montar_base.py.
+Antes: scripts/baixar_boletins.py --turno 2 e scripts/montar_base.py.
 """
 
 from __future__ import annotations

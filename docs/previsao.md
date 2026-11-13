@@ -381,7 +381,7 @@ seções apuradas (pontos percentuais, no % de FLAVIO BOLSONARO):
 
 | Apurado (TSE) | Horário | Placar oficial | Projeção | O que a projeção já tinha lido |
 |---|---|---|---|---|
-| 5% | 19h31 | +0,8 | −3,1 | 5% do eleitorado |
+| 5% | 19h31 | +0,8 | −3,0 | 5% do eleitorado |
 | 10% | 19h40 | +1,4 | −2,6 | 7% |
 | 25% | 20h04 | +2,3 | +0,1 | 23% |
 | 50% | 20h29 | +1,6 | +0,2 | 42% |
@@ -426,11 +426,80 @@ seções apuradas (pontos percentuais, no % de FLAVIO BOLSONARO):
    só conta se tiver pelo menos as seções do andamento. O site no ar naquela
    noite ainda tinha o erro, corrigido depois.
 
-**O que não dá para saber só com a gravação:** quanto do erro do começo veio do
-modelo e quanto veio da coleta (municípios a menos e municípios zerados). O
-teste limpo é o mesmo feito com 2022: quando o TSE publicar os boletins de urna
-do 2º turno de 2026, com a hora de chegada de cada um, dá para reproduzir a
-noite seção por seção, sem os problemas de coleta.
+### O que a prorrogação mudou na projeção
+
+Depois da eleição, o TSE publicou três arquivos que permitem refazer a noite:
+
+- o histórico completo da totalização, com cada momento em que cada zona eleitoral foi somada;
+- o detalhe por seção, com a hora em que cada seção entrou na contagem, nos dois turnos;
+- os boletins de urna, com a hora em que cada urna foi encerrada.
+
+Com eles, o [`scripts/reproduzir_noite_2026.py`](../scripts/reproduzir_noite_2026.py)
+roda a mesma projeção de três jeitos:
+
+| Apurado | Ao vivo (como saiu na noite) | Com a coleta perfeita | Na ordem de chegada do 1º turno |
+|---|---|---|---|
+| 5% | −3,0 | −2,9 | −0,4 |
+| 10% | −2,6 | −1,2 | +0,2 |
+| 25% | +0,1 | 0,0 | +0,7 |
+| 50% | +0,2 | +0,2 | +0,5 |
+| 75% | 0,0 | 0,0 | +0,3 |
+
+*Erro da projeção em pontos, no % de FLAVIO BOLSONARO. "Coleta perfeita": a projeção
+recalculada minuto a minuto com exatamente o que o TSE tinha divulgado, segundo o
+histórico oficial. "Ordem do 1º turno": os votos do 2º turno, seção por seção,
+entrando na contagem na mesma ordem e no mesmo ritmo da noite do 1º turno, que foi
+normal.*
+
+1. **A prorrogação em si mexeu pouco.**
+   - **Urnas:** 98,5% foram encerradas até 17h30 (horário de Brasília; os boletins
+     trazem a hora local, convertida pelo fuso de cada município), porque a decisão
+     chegou quando a maioria já tinha fechado. Só 1,4% ficaram abertas até perto
+     das 19h.
+   - **Comparecimento:** subiu de 78,9% no 1º turno para 80,8% no 2º. Nas seções que
+     ficaram abertas, subiu 3,1 pontos; nas outras, 1,8.
+   - **Peso no total:** mesmo que toda a diferença viesse da prorrogação, seriam cerca
+     de 32 mil votos, perto de 0,03% do total.
+   - **Efeito na projeção:** esperar o comparecimento do 1º turno faria a projeção
+     errar 0,06 ponto antes de qualquer voto.
+2. **A pausa só atrasou a noite.** Antes das 19h, só 0,4% das seções tinham entrado na
+   contagem. Depois disso, o ritmo e a ordem entre as regiões foram os de um 2º turno
+   normal:
+   - **Ritmo:** metade das seções em 87 minutos (86 no 2º turno de 2022).
+   - **Ordem entre regiões:** com 10% do país apurado, o Norte tinha 31% do seu
+     eleitorado contado e o Sudeste, 3% (2022: 30% e 3%).
+3. **O erro do começo foi do modelo, não só da coleta.**
+   - **Começo:** com a coleta perfeita, a projeção começaria 2,9 pontos abaixo do
+     resultado de FLAVIO BOLSONARO, quase o mesmo que ao vivo.
+   - **Perto dos 10%:** a coleta pesou aqui. Com as recusas do servidor e os
+     arquivos atrasados, o erro foi de 2,6 pontos ao vivo, contra 1,2 com a coleta
+     perfeita.
+4. **O que mudou foi a ordem dentro de cada município.** A primeira seção contada em
+   cada município foi, em média, 0,8 ponto menos favorável a FLAVIO BOLSONARO do que
+   o resultado final do próprio município. Na ordem do 1º turno, essa diferença foi
+   de 0,3 ponto. O efeito somado:
+   - **Às 19h32, na primeira projeção:** os municípios com até 200 votos apurados
+     estavam 0,42 abaixo do previsto na escala logit. No fim, esses mesmos municípios
+     ficaram só 0,04 abaixo.
+   - **O que o modelo fez com isso:** ele trata as primeiras seções de cada município
+     como uma amostra sem viés e dá quase o mesmo peso a cada município. Com 1.802
+     municípios mostrando uma ou poucas seções inclinadas para o mesmo lado, leu
+     isso como uma mudança no país inteiro de cerca de 0,25 na escala logit (uns 6
+     pontos). A mudança real, em relação à previsão de antes da eleição, foi de 1,7
+     ponto.
+   - **Uma hipótese:** a ordem pode ter mudado porque todos os boletins esperaram e
+     foram enviados juntos depois das 19h, mas os dados não dizem por que cada seção
+     chegou antes.
+5. **Nenhuma ordem é "boa" para o modelo.**
+   - **Na ordem do 1º turno:** o começo teria sido bem melhor (0,4 ponto de erro com
+     5%), mas o meio da noite pior (0,7 com 25%), e o resultado ficaria dentro da
+     margem em só 78% das atualizações.
+   - **Em 2022:** as primeiras seções puxaram para o outro lado (para JAIR
+     BOLSONARO).
+   - **O que precisa mudar no modelo:** tratar as primeiras seções de cada município
+     como possivelmente puxadas para o mesmo lado, por exemplo com um desvio comum
+     às apurações parciais. Esse é o próximo ajuste, a ser testado nas noites de
+     2022 e 2026 antes de entrar no site.
 
 ### Governador
 

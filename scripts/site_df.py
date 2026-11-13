@@ -11,7 +11,7 @@ Fontes:
 - Votos por seção:
   - Presidente 2026: arquivo gerado por scripts/site_conferencia.py (votação por seção do TSE);
   - Governador 2026: https://cdn.tse.jus.br/estatistica/sead/odsele/votacao_secao/votacao_secao_2026_DF.zip
-  - Presidente 2022: boletins de urna baixados por scripts/baixar_boletins_2022.py.
+  - Presidente 2022: boletins de urna baixados por scripts/baixar_boletins.py.
 
 Cada local de votação é ligado à RA pelo ponto (latitude e longitude) dentro do
 polígono da RA. Grava em app/dados/: df_ras.json (polígonos simplificados),

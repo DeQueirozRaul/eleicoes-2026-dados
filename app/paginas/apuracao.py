@@ -229,6 +229,92 @@ def governador_2026(gov: pd.DataFrame) -> None:
     st.caption("Placar oficial do TSE nos votos válidos, sem projeção (a projeção deste site é só para Presidente).")
 
 
+VERSOES = {   # versão da noite -> (nome no gráfico, cor, traço)
+    "ao vivo (gravação)": ("ao vivo, como a projeção saiu na noite", PROJECAO, "solid"),
+    "coleta perfeita": ("com a coleta perfeita (histórico oficial do TSE)", comum.TINTA, "solid"),
+    "na ordem do 1º turno": ("com os votos chegando na ordem do 1º turno", comum.MUDO, "dash"),
+}
+
+
+def prorrogacao_e_projecao() -> None:
+    """A noite reproduzida com os dados oficiais publicados depois da eleição (scripts/reproduzir_noite_2026.py)."""
+    erros = comum.ler("noite_2026_erros")
+    urnas = comum.ler("noite_2026_prorrogacao").set_index("encerramento")
+    ritmo = comum.ler("noite_2026_ritmo").set_index(["turno", "marco"])["minutos"]
+    primeira = comum.ler("noite_2026_primeira_secao").set_index("ordem")["dif_pp"]
+    marco = erros.set_index(["versao", "marco"])
+    resumo = comum.ler("noite_2026_resumo").iloc[0]
+
+    st.subheader("O que a prorrogação mudou na projeção")
+    no_horario = urnas.loc["até 17h30", "pct_secoes"]
+    tarde = urnas.loc["depois de 18h30"]
+    st.markdown(
+        "Depois da eleição o TSE publicou a hora em que cada urna foi encerrada, a hora em que cada seção entrou na "
+        "contagem e o histórico completo da totalização. Com eles, a noite foi refeita de três jeitos, para separar "
+        "o que foi do modelo, o que foi da coleta e o que foi da prorrogação."
+    )
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        comum.cartao("Urnas encerradas até 17h30", comum.pct(no_horario),
+                     f"só {comum.pct(tarde['pct_secoes'])} ficaram abertas até perto das 19h (horário de Brasília)")
+    with c2:
+        comum.cartao("Comparecimento no 2º turno", comum.pct(resumo["comparecimento_2t"]),
+                     f"{comum.pontos(resumo['comparecimento_2t'] - resumo['comparecimento_1t'])} a mais que no 1º "
+                     f"turno; {comum.pontos(tarde['variacao_pp'] / 100)} a mais nas seções que ficaram abertas")
+    with c3:
+        comum.cartao("Metade das seções contadas em", f"{ritmo[(2, 0.5)]:.0f} min",
+                     f"depois das 19h (no 1º turno, {ritmo[(1, 0.5)]:.0f} min depois das 17h)")
+
+    fig = go.Figure()
+    for versao, (nome, cor, traco) in VERSOES.items():
+        r = erros[erros["versao"] == versao]
+        if r.empty:
+            continue
+        fig.add_trace(go.Scatter(
+            x=r["marco"], y=r["erro_projecao_pp"] / 100, mode="lines+markers", name=nome,
+            line=dict(color=cor, width=2, dash=traco), marker=dict(size=7),
+            hovertemplate="%{x:.0%} apurado<br>erro da projeção: %{y:+.1%}<extra></extra>"))
+    fig.add_hline(y=0, line=dict(color=comum.EIXO, width=1))
+    fig.update_xaxes(tickformat=".0%", title="seções apuradas", tickvals=sorted(erros["marco"].unique()))
+    fig.update_yaxes(tickformat="+.0%", title=f"projeção menos o resultado final (% de {A['nm_urna']})")
+    comum.estilo(fig, altura=360)
+    tabela = erros[erros["versao"].isin(VERSOES)].pivot_table(index="marco", columns="versao", values="erro_projecao_pp")
+    tabela = tabela[[v for v in VERSOES if v in tabela]]
+    tabela.index = tabela.index.map(lambda v: comum.pct(v, 0))
+    comum.mostrar(fig, tabela=tabela.map(lambda v: f"{v:+.1f}".replace(".", ",") + " pt").rename_axis("Apurado"),
+                  fonte="TSE (histórico de totalização, detalhe por seção e boletins de urna do 2º turno de 2026); "
+                        "cálculo do projeto.", chave="prorrogacao")
+
+    ao_vivo, perfeita = marco.loc["ao vivo (gravação)"], marco.loc["coleta perfeita"]
+    ordem_1t = marco.loc["na ordem do 1º turno"]
+    st.markdown(
+        f"""
+- **A prorrogação em si mexeu pouco.** {comum.pct(no_horario)} das urnas foram encerradas até 17h30; a decisão
+  chegou quando a maioria já tinha fechado. O comparecimento subiu mais nas seções que ficaram abertas, mas elas
+  eram poucas: mesmo que toda essa diferença viesse da prorrogação, seriam cerca de
+  {comum.numero(round(tarde['qt_aptos'] * (tarde['variacao_pp'] - urnas.loc['até 17h30', 'variacao_pp']) / 100, -3))}
+  votos, perto de 0,03% do total.
+- **O erro do começo foi do modelo, não só da coleta.** Com a coleta perfeita, a projeção começaria
+  {comum.pontos(abs(perfeita.loc[0.05, 'erro_projecao_pp']) / 100)} abaixo do resultado de {A['nm_urna']} (ao vivo
+  foram {comum.pontos(abs(ao_vivo.loc[0.05, 'erro_projecao_pp']) / 100)}). As recusas do servidor do TSE e os
+  arquivos atrasados pesaram perto dos 10% apurados: {comum.pontos(abs(ao_vivo.loc[0.10, 'erro_projecao_pp']) / 100)}
+  de erro ao vivo, contra {comum.pontos(abs(perfeita.loc[0.10, 'erro_projecao_pp']) / 100)} com a coleta perfeita.
+- **O que mudou foi a ordem dentro de cada município.** Só {comum.pct(resumo['secoes_antes_das_19h'])} das seções
+  entraram na contagem antes das 19h; o resto chegou de uma vez depois disso. Nessa ordem, a primeira
+  seção contada em cada município foi, em média, {comum.pontos(abs(primeira['ordem do 2º turno (real)']) / 100)}
+  menos favorável a {A['nm_urna']} do que o resultado final do próprio município. Na ordem do 1º turno, uma noite
+  normal, essa diferença foi de {comum.pontos(abs(primeira['ordem do 1º turno']) / 100)}. A projeção trata as
+  primeiras seções de cada município como uma amostra sem viés; com
+  {comum.numero(resumo['municipios_primeira_projecao'])} municípios mostrando uma ou poucas seções inclinadas para o
+  mesmo lado, ela leu isso como uma mudança no país inteiro.
+- **Na ordem do 1º turno, o começo teria sido bem melhor** ({comum.pontos(abs(ordem_1t.loc[0.05, 'erro_projecao_pp']) / 100)}
+  de erro com 5% apurado), mas o meio da noite pior ({comum.pontos(abs(ordem_1t.loc[0.25, 'erro_projecao_pp']) / 100)}
+  com 25%). Nenhuma ordem é "boa" para o modelo: o que precisa mudar é tratar as primeiras seções de cada município
+  como possivelmente puxadas para o mesmo lado. Esse é o próximo ajuste, a ser testado nas noites de 2022 e 2026.
+"""
+    )
+
+
 agora = datetime.now(FUSO_BRASILIA)
 NOITE_GRAVADA = comum.existe("noite_2026_2t") and "AO_VIVO_ELEICAO" not in os.environ
 if NOITE_GRAVADA:
@@ -370,6 +456,8 @@ if NOITE_GRAVADA:
         "menos municípios do que o TSE já tinha apurado. Os detalhes, inclusive o que deu errado, estão em "
         "docs/previsao.md."
     )
+    if comum.existe("noite_2026_erros"):
+        prorrogacao_e_projecao()
     st.subheader("Governador, 2º turno (DF e outros 5 estados)")
     governador_2026(comum.ler("noite_2026_governador"))
 
