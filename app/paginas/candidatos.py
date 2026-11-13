@@ -4,6 +4,8 @@
 Dados: app/dados/candidatos_*.parquet, gerados por scripts/site_candidatos.py.
 """
 
+import json
+
 import comum
 import pandas as pd
 import plotly.graph_objects as go
@@ -150,11 +152,13 @@ comum.cabecalho("Perfil dos candidatos",
                 "Quem se candidatou e quem foi eleito em 2018, 2022 e 2026, comparado com a população "
                 "adulta do Brasil.")
 
+EM_ABERTO_2T = int(eleitos_conf.loc[eleitos_conf["ano"] == 2026, "no_2o_turno"].sum()) > 0
 st.markdown(
     "Contamos as **candidaturas que foram a voto**: estavam na urna e os votos foram contados como válidos. "
-    "Ficam de fora quem desistiu, quem foi barrado e quem teve os votos anulados. Em 2026 os resultados são "
-    "do 1º turno (4 de outubro); quem disputa o 2º turno (25 de outubro) aparece à parte, nem como eleito "
-    "nem como não eleito."
+    "Ficam de fora quem desistiu, quem foi barrado e quem teve os votos anulados. "
+    + ("Em 2026 os resultados são do 1º turno (4 de outubro); quem disputa o 2º turno (25 de outubro) aparece "
+       "à parte, nem como eleito nem como não eleito." if EM_ABERTO_2T else
+       "Quem foi ao 2º turno conta pelo resultado do 2º turno (em 2026, 25 de outubro).")
 )
 
 # 1. Quem é eleito se parece com a população? --------------------------------------
@@ -175,7 +179,7 @@ st.markdown(
     + frase(dist["Cor ou raça"], "Pessoas pretas e pardas", ["Preta", "Parda"], "18 anos ou mais")
 )
 if n_eleitos < MINIMO:
-    if ano == 2026 and cargo == "Presidente":
+    if ano == 2026 and cargo == "Presidente" and EM_ABERTO_2T:
         st.caption("Para Presidente em 2026 ainda não há eleito: a disputa vai ao 2º turno.")
     else:
         st.caption(f"Com {n_eleitos} eleito(s) neste cargo, não mostramos o perfil dos eleitos: "
@@ -460,9 +464,12 @@ with st.expander("Como os dados foram tratados e conferidos"):
         "Vagas aguardando totalização": [comum.numero(v) if v else "" for v in conf["vagas_aguardando"]],
     }), hide_index=True)
     gov = conf[(conf["ano"] == 2026) & (conf["cargo"] == "Governador")].iloc[0]
+    ufs_2t = len(json.loads((comum.DADOS / "ao_vivo_config.json").read_text(encoding="utf-8"))
+                 .get("ufs_governador_2t", []))
+    governador = (f"{comum.numero(gov['eleitos'])} eleitos no 1º turno e {comum.numero(gov['no_2o_turno'] // 2)} "
+                  f"estados com 2º turno ({comum.numero(gov['no_2o_turno'])} candidatos)" if gov["no_2o_turno"] else
+                  f"{comum.numero(gov['eleitos'])} eleitos, {ufs_2t} deles no 2º turno (25 de outubro)")
     st.caption("Senado: 2 vagas por estado em 2018 e 2026, 1 em 2022. Deputado estadual ou distrital: 1.035 "
-               f"estaduais e 24 distritais. Governador em 2026: {comum.numero(gov['eleitos'])} eleitos no 1º turno "
-               f"e {comum.numero(gov['no_2o_turno'] // 2)} estados com 2º turno "
-               f"({comum.numero(gov['no_2o_turno'])} candidatos).")
+               f"estaduais e 24 distritais. Governador em 2026: {governador}.")
 
 comum.rodape()

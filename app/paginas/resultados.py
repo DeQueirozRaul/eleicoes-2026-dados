@@ -1,11 +1,12 @@
-"""Resultados e mapa: o 1º turno de 2026 município a município.
+"""Resultados e mapa: os dois turnos de 2026 município a município.
 
-Seções: placar nacional; mapa de quem ficou à frente em cada município;
+Seções: 2º turno (placar e mapa); placar nacional do 1º turno; mapa de quem ficou à frente em cada município;
 municípios que mudaram de lado desde 2022; brancos, nulos e abstenção;
 quociente eleitoral (Deputado Federal); voto dividido Presidente × Governador.
 
 Lê só arquivos pequenos de app/dados/ (resultados_*.parquet e
-resultados_malha.json), gerados por scripts/site_resultados.py.
+resultados_malha.json), gerados por scripts/site_resultados.py e, o 2º turno,
+por scripts/site_2t.py.
 """
 
 from __future__ import annotations
@@ -159,13 +160,93 @@ def textos_hover_resultado(uf: str | None) -> list[list[str]]:
 # =============================================================================
 comum.cabecalho(
     "Resultados e mapa",
-    "O 1º turno de 4 de outubro de 2026, município a município, e o que mudou desde 2022.",
+    "Os dois turnos de 2026 para Presidente, município a município, e o que mudou desde 2022.",
 )
 st.markdown(
-    "Nesta página: [placar](#placar) · [mapa](#mapa) · [quem mudou de lado](#mudou-de-lado) · "
+    "Nesta página: [2º turno](#segundo-turno) · [placar do 1º turno](#placar) · [mapa](#mapa) · "
+    "[quem mudou de lado](#mudou-de-lado) · "
     "[brancos, nulos e abstenção](#brancos-nulos-e-abstencao) · [quociente eleitoral](#quociente-eleitoral) · "
     "[voto dividido](#voto-dividido)"
 )
+
+# --- 0. 2º turno ------------------------------------------------------------------
+FONTE_2T = "TSE, boletins de urna do 2º turno de 2026 (a soma dos municípios confere com o resultado oficial)"
+
+
+@st.cache_data(show_spinner=False)
+def tabela_2t(uf: str | None) -> pd.DataFrame:
+    d = segundo if uf is None else segundo[segundo["uf"] == uf]
+    d = d[d["cd_municipio_ibge"].notna()]
+    pa, pb = d[f"pct_{NUMERO[A]}"], d[f"pct_{NUMERO[B]}"]
+    return pd.DataFrame({
+        "Município": d["nm_municipio"], "UF": d["uf"],
+        f"{A} (% dos votos válidos)": pa.map(comum.pct), f"{B} (% dos votos válidos)": pb.map(comum.pct),
+        f"Diferença entre {A} e {B}": (pa - pb).map(comum.pontos),
+        "Mais votado no 1º turno": d["mais_votado_1t"],
+        "Votos válidos": d["qt_validos"].map(comum.numero),
+    }).sort_values(["UF", "Município"], key=lambda s: s.map(sem_acento))
+
+
+@st.fragment
+def secao_mapa_2t() -> None:
+    uf = escolher_area("area_mapa_2t")
+    d = segundo[segundo["cd_municipio_ibge"].notna()]
+    d = d if uf is None else d[d["uf"] == uf]
+    pa, pb = d[f"pct_{NUMERO[A]}"], d[f"pct_{NUMERO[B]}"]
+    hover = [[r.nm_municipio, r.uf, comum.pct(a), comum.pct(b),
+              "Empate" if a == b else f"{A if a > b else B} à frente por {comum.pontos(a - b)}",
+              r.mais_votado_1t if isinstance(r.mais_votado_1t, str) else "—"]
+             for r, a, b in zip(d.itertuples(), pa, pb)]
+    modelo = ("<b>%{customdata[0]} (%{customdata[1]})</b><br>"
+              f"{A}: %{{customdata[2]}}<br>{B}: %{{customdata[3]}}<br>%{{customdata[4]}}"
+              "<br>No 1º turno, à frente: %{customdata[5]}<extra></extra>")
+    traco = go.Choropleth(
+        geojson=geojson_de(d["cd_municipio_ibge"]), locations=d["cd_municipio_ibge"],
+        z=(100 * (pb - pa)).round(1), zmin=-LIMITE_ESCALA, zmax=LIMITE_ESCALA, zmid=0, colorscale=comum.DIVERGENTE,
+        customdata=hover, hovertemplate=modelo,
+        colorbar=dict(
+            orientation="h", x=0.5, xanchor="center", y=0, yanchor="top", len=0.9, thickness=10, outlinewidth=0,
+            tickvals=[-60, -40, -20, 0, 20, 40, 60], ticktext=["60 pontos", "40", "20", "0", "20", "40", "60 pontos"],
+            tickfont=dict(color=comum.MUDO, size=11),
+            title=dict(text=f"◀ {A} à frente  ·  {B} à frente ▶", side="top", font=dict(color=comum.TINTA_2, size=12)),
+        ),
+        **contorno(uf),
+    )
+    fig = figura_mapa([traco], d["cd_municipio_ibge"], altura=600 if uf is None else 520, rodape=78)
+    titulo(f"2º turno: vantagem de quem ficou à frente, em pontos — {nome_area(uf)}",
+           "Passe o mouse (ou toque) num município para ver os números e quem ficou à frente no 1º turno.")
+    comum.mostrar(fig, tabela=tabela_2t(uf), fonte=f"{FONTE_2T}; malha municipal do IBGE", chave="mapa_2t")
+
+
+segundo = comum.ler("resultados_2t") if comum.existe("resultados_2t") else None
+if segundo is not None:
+    st.header("2º turno para Presidente, 25 de outubro", anchor="segundo-turno")
+    votos_2t = {A: int(segundo[f"votos_{NUMERO[A]}"].sum()), B: int(segundo[f"votos_{NUMERO[B]}"].sum())}
+    validos_2t = sum(votos_2t.values())
+    no_mapa = segundo[segundo["cd_municipio_ibge"].notna()]
+    viraram = no_mapa[no_mapa["mudou_desde_o_1t"] & no_mapa["mais_votado"].isin([A, B])]
+    c1, c2, c3 = st.columns(3)
+    for coluna, nome in ((c1, A), (c2, B)):
+        n = int((no_mapa["mais_votado"] == nome).sum())
+        with coluna:
+            comum.cartao(nome, comum.pct(votos_2t[nome] / validos_2t, 2),
+                         f"{comum.numero(votos_2t[nome])} votos; à frente em {comum.numero(n)} municípios", cor=CORES[nome])
+    with c3:
+        comum.cartao("Foram votar", comum.pct(segundo["qt_comparecimento"].sum() / segundo["qt_aptos"].sum()),
+                     f"{comum.numero(segundo['qt_comparecimento'].sum())} de "
+                     f"{comum.numero(segundo['qt_aptos'].sum())} eleitores")
+    st.markdown(
+        f"Do 1º para o 2º turno, **{comum.numero(len(viraram))} municípios** mudaram de quem ficou à frente: "
+        + " e ".join(f"{comum.numero(int((viraram['mais_votado'] == nome).sum()))} passaram a ter **{nome}** à frente"
+                     for nome in (A, B))
+        + ". Os votos do exterior entram no total, mas não aparecem no mapa. Quem proclama o resultado é o TSE."
+    )
+    secao_mapa_2t()
+    transicao_2t = no_mapa["transicao"].value_counts()
+    st.caption(
+        "Comparado com o 2º turno de 2022 (os mesmos dois números, 22 e 13): "
+        + "; ".join(f"{rotulo}: {comum.numero(n)} municípios" for rotulo, n in transicao_2t.items()) + "."
+    )
 
 # --- 1. placar nacional ---------------------------------------------------------
 st.header("Placar do 1º turno para Presidente", anchor="placar")

@@ -26,6 +26,8 @@ ETAPAS = {
     "eleitorado": "Eleitorado (baixa o perfil do eleitorado e a população do IBGE)",
     "conferencia": "Conferência dos dados (baixa a votação por seção de 2026)",
     "df": "Mapa do Distrito Federal",
+    # depois de "resultados" e "df": acrescenta o 2º turno de 2026 aos arquivos dessas duas páginas
+    "2t": "2º turno de 2026 em Resultados e no Mapa do DF (usa os boletins de urna de 2022 e 2026)",
 }
 
 

@@ -50,9 +50,12 @@ WFS_RAS = ("https://catalogo.ipe.df.gov.br/geoserver/ows?service=WFS&version=1.0
 def baixar() -> None:
     BRUTOS.mkdir(parents=True, exist_ok=True)
     ras = BRUTOS / "ras.json"
-    if not ras.exists():
-        resposta = requests.get(WFS_RAS, timeout=120)
+    if not ras.exists() or ras.stat().st_size == 0:
+        # o servidor devolve uma página vazia para o identificador padrão do requests
+        resposta = requests.get(WFS_RAS, timeout=120, headers={"User-Agent": "eleicoes-2026-dados (projeto de estudo)"})
         resposta.raise_for_status()
+        if not json.loads(resposta.content).get("features"):   # resposta vazia: falha, não grava
+            raise RuntimeError("o WFS do IPE-DF não devolveu as regiões administrativas; tente de novo")
         ras.write_bytes(resposta.content)
     arquivos = [
         (f"{CDN}/eleitorado_locais_votacao/eleitorado_local_votacao_2026.zip", "eleitorado_local_votacao_2026_DF.csv",
@@ -60,7 +63,7 @@ def baixar() -> None:
         (f"{CDN}/eleitorado_locais_votacao/eleitorado_local_votacao_2022.zip", "eleitorado_local_votacao_2022.csv",
          "locais_2022.parquet", "SG_UF = 'DF' and NR_TURNO = '1'"),
         (f"{CDN}/votacao_secao/votacao_secao_2026_DF.zip", "votacao_secao_2026_DF.csv",
-         "governador_2026.parquet", "CD_CARGO = '3'"),
+         "governador_2026.parquet", "CD_CARGO = '3' and NR_TURNO = '1'"),
     ]
     for url, membro, saida, filtro in arquivos:
         if (BRUTOS / saida).exists():
@@ -201,6 +204,39 @@ def disputas(con: duckdb.DuckDBPyConnection) -> pd.DataFrame:
     } for chave, titulo, ano, c in linhas])
 
 
+def agregar(tabela_disputas: pd.DataFrame, votos: dict[str, pd.DataFrame], presenca: dict[int, pd.DataFrame],
+            secoes: dict[int, pd.DataFrame], ras: list[dict]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Soma as seções de cada disputa por local de votação e por RA, conferindo com o resultado oficial.
+    `presenca` e `secoes` têm uma tabela por ano (ou por chave de disputa, se o comparecimento mudar entre turnos)."""
+    por_local, por_ra = [], []
+    for _, d in tabela_disputas.iterrows():
+        v = votos[d["disputa"]]
+        v = v[v["nr"].isin(d["numeros_validos"])]
+        por_secao = v.pivot_table(index=["zona", "secao"], columns="nr", values="qt", aggfunc="sum", fill_value=0)
+        resumo = pd.DataFrame({"qt_a": por_secao.get(d["nr_a"], 0), "qt_b": por_secao.get(d["nr_b"], 0),
+                               "qt_validos": por_secao.sum(axis=1)}).reset_index()
+        # conferência: a soma das seções tem de bater com o resultado oficial do DF
+        for coluna, oficial in (("qt_a", "qt_a_oficial"), ("qt_b", "qt_b_oficial"), ("qt_validos", "qt_validos_oficial")):
+            diferenca = int(resumo[coluna].sum()) - int(d[oficial])
+            print(f"  {d['disputa']}: {coluna} seções − oficial = {diferenca}")
+        resumo = resumo.merge(presenca.get(d["disputa"], presenca.get(d["ano"])), on=["zona", "secao"], how="left")
+        resumo = resumo.merge(secoes[d["ano"]], on=["zona", "secao"], how="left")
+        resumo["disputa"] = d["disputa"]
+        soma = ["qt_a", "qt_b", "qt_validos", "qt_aptos", "qt_comparecimento"]
+        por_local.append(resumo.groupby(["disputa", "zona", "nr_local", "nm_local", "bairro", "ra"], dropna=False)
+                         .agg(**{c: (c, "sum") for c in soma}, lat=("lat", "first"), lon=("lon", "first"))
+                         .reset_index())
+        por_ra.append(resumo.groupby(["disputa", "ra"], dropna=False)[soma].sum().reset_index())
+
+    locais_df = pd.concat(por_local, ignore_index=True)
+    locais_df[["zona", "nr_local"]] = locais_df[["zona", "nr_local"]].astype("Int64")
+    regioes = pd.concat(por_ra, ignore_index=True)
+    regioes["ra"] = regioes["ra"].fillna("Sem localização")
+    codigos = {r["ra"]: r["ra_codigo"] for r in ras}
+    regioes["ra_codigo"] = regioes["ra"].map(codigos)
+    return locais_df, regioes
+
+
 def main() -> None:
     DESTINO.mkdir(parents=True, exist_ok=True)
     print("Baixando o que falta", flush=True)
@@ -218,32 +254,7 @@ def main() -> None:
         sem_ra = s["ra"].isna().mean()
         print(f"  locais {ano}: {len(s.drop_duplicates(['zona', 'nr_local']))} locais, {len(s)} seções, {sem_ra:.2%} das seções sem RA")
 
-    por_local, por_ra = [], []
-    for _, d in tabela_disputas.iterrows():
-        v = votos[d["disputa"]]
-        v = v[v["nr"].isin(d["numeros_validos"])]
-        por_secao = v.pivot_table(index=["zona", "secao"], columns="nr", values="qt", aggfunc="sum", fill_value=0)
-        resumo = pd.DataFrame({"qt_a": por_secao.get(d["nr_a"], 0), "qt_b": por_secao.get(d["nr_b"], 0),
-                               "qt_validos": por_secao.sum(axis=1)}).reset_index()
-        # conferência: a soma das seções tem de bater com o resultado oficial do DF
-        for coluna, oficial in (("qt_a", "qt_a_oficial"), ("qt_b", "qt_b_oficial"), ("qt_validos", "qt_validos_oficial")):
-            diferenca = int(resumo[coluna].sum()) - int(d[oficial])
-            print(f"  {d['disputa']}: {coluna} seções − oficial = {diferenca}")
-        resumo = resumo.merge(presenca[d["ano"]], on=["zona", "secao"], how="left")
-        resumo = resumo.merge(secoes[d["ano"]], on=["zona", "secao"], how="left")
-        resumo["disputa"] = d["disputa"]
-        soma = ["qt_a", "qt_b", "qt_validos", "qt_aptos", "qt_comparecimento"]
-        por_local.append(resumo.groupby(["disputa", "zona", "nr_local", "nm_local", "bairro", "ra"], dropna=False)
-                         .agg(**{c: (c, "sum") for c in soma}, lat=("lat", "first"), lon=("lon", "first"))
-                         .reset_index())
-        por_ra.append(resumo.groupby(["disputa", "ra"], dropna=False)[soma].sum().reset_index())
-
-    locais_df = pd.concat(por_local, ignore_index=True)
-    locais_df[["zona", "nr_local"]] = locais_df[["zona", "nr_local"]].astype("Int64")
-    regioes = pd.concat(por_ra, ignore_index=True)
-    regioes["ra"] = regioes["ra"].fillna("Sem localização")
-    codigos = {r["ra"]: r["ra_codigo"] for r in ras}
-    regioes["ra_codigo"] = regioes["ra"].map(codigos)
+    locais_df, regioes = agregar(tabela_disputas, votos, presenca, secoes, ras)
 
     tabela_disputas = tabela_disputas.drop(columns="numeros_validos")
     for nome, tabela in (("df_disputas", tabela_disputas), ("df_regioes", regioes), ("df_locais", locais_df)):
