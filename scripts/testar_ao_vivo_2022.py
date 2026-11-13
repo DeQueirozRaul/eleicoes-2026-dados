@@ -10,7 +10,7 @@ comparada com o resultado final.
   é o mapa do 2º turno de 2018 (mesmos lados), com incerteza nacional grande,
   já que esse mapa não diz nada sobre o nível nacional de 2022.
 
-Antes: scripts/baixar_boletins_2022.py --turno 1/2 e scripts/reproduzir_apuracao_2022.py.
+Antes: scripts/baixar_boletins.py --turno 1/2 e scripts/reproduzir_apuracao_2022.py.
 
     python scripts/testar_ao_vivo_2022.py --turno 2
 """

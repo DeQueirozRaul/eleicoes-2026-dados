@@ -8,7 +8,7 @@ import streamlit as st
 
 comum.cabecalho(
     "Mapa do Distrito Federal",
-    "Como votou cada uma das 35 regiões administrativas e cada local de votação do DF, no 1º turno de 2026 e "
+    "Como votou cada uma das 35 regiões administrativas e cada local de votação do DF, nos dois turnos de 2026 e "
     "nas eleições de 2022.",
 )
 
@@ -40,7 +40,8 @@ def com_percentuais(tabela: pd.DataFrame, d: pd.Series) -> pd.DataFrame:
 
 
 # --- filtros ----------------------------------------------------------------------
-ordem = ["pres_2026_1t", "gov_2026_1t", "pres_2022_2t", "pres_2022_1t"]
+ordem = [k for k in ["pres_2026_2t", "gov_2026_2t", "pres_2026_1t", "gov_2026_1t", "pres_2022_2t", "pres_2022_1t"]
+         if k in disputas.index]
 col1, col2 = st.columns([3, 2])
 with col1:
     escolha = st.radio("Disputa", ordem, format_func=lambda k: disputas.loc[k, "titulo"], horizontal=True)
@@ -210,8 +211,9 @@ st.markdown(
 - **Voto conta onde a pessoa vota**, que nem sempre é onde ela mora: quem se mudou e não transferiu o título vota
   no local antigo.
 - **A soma bate com o oficial:** somando as seções, os votos de cada candidato no DF são iguais ao resultado oficial
-  do TSE nas quatro disputas.
-- **Governador:** no DF, CELINA LEÃO e LEANDRO GRASS disputam o 2º turno em 25/10.
+  do TSE em todas as disputas.
+- **Os dois turnos de 2026:** no 2º turno, o DF votou de novo para Presidente e para Governador (CELINA LEÃO e
+  LEANDRO GRASS). As duas disputas do 2º turno vêm dos boletins de urna e da votação por seção do TSE.
 """
 )
 comum.rodape()

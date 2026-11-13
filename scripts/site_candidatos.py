@@ -210,7 +210,11 @@ def situacao_texto(ano: int, sit_1t, sit_2t, st_json) -> str:
     """Texto do resultado para a tabela do Power BI ('Eleito por QP', 'Suplente',
     'Eleito (2º turno)', '2º turno', 'Aguardando totalização'...)."""
     if ano >= 2026:
-        return st_json.strip() if isinstance(st_json, str) and st_json.strip() else AGUARDANDO
+        texto = st_json.strip() if isinstance(st_json, str) and st_json.strip() else AGUARDANDO
+        if situacao_json(texto) == SEGUNDO_TURNO:
+            final = situacao_final("2º TURNO", sit_2t)
+            return f"{final} (2º turno)" if final in (ELEITO, NAO_ELEITO) else SEGUNDO_TURNO
+        return texto
     if not isinstance(sit_1t, str) or not sit_1t.strip():
         return AGUARDANDO
     if sit_1t.strip().upper() == "2º TURNO":
@@ -475,6 +479,9 @@ def candidaturas(ano: int) -> pd.DataFrame:
         base["st_json"] = base["sq_candidato"].map(sit["st_json"])
         base["dvt_json"] = base["sq_candidato"].map(sit["dvt_json"])
         base["situacao"] = [situacao_json(s) if isinstance(s, str) else None for s in base["st_json"]]
+        # quem foi ao 2º turno: o resultado vem da totalização do 2º turno (consulta_cand, NR_TURNO = 2)
+        no_2t = base["situacao"] == SEGUNDO_TURNO
+        base.loc[no_2t, "situacao"] = [situacao_final("2º TURNO", s2) for s2 in base.loc[no_2t, "sit_tot_2t"]]
         # Candidatos substituídos depois de a urna ser preparada (o substituto herda
         # o número e os votos) seguem "Válido" no arquivo complementar, mas não
         # aparecem no resultado: não contam como quem foi a voto.

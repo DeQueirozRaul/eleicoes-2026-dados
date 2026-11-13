@@ -1,12 +1,14 @@
-"""Baixa os boletins de urna de 2022 (Presidente) e guarda só o necessário.
+"""Baixa os boletins de urna (Presidente) e guarda só o necessário.
 
 Os boletins trazem, para cada seção eleitoral, os votos e a hora em que o
-boletim chegou ao TSE. São usados para reproduzir a apuração seção por seção.
-Cada zip (um por UF) é baixado, as linhas de Presidente vão para um Parquet
-em dados/brutos/bweb_2022_{turno}t/ e os arquivos temporários são apagados.
+boletim chegou ao TSE (em 2026, também a hora em que a urna foi encerrada).
+São usados para reproduzir a apuração seção por seção. Cada zip (um por UF) é
+baixado, as linhas de Presidente vão para um Parquet em
+dados/brutos/bweb_{ano}_{turno}t/ e os arquivos temporários são apagados.
 
-    python scripts/baixar_boletins_2022.py --turno 2
-    python scripts/baixar_boletins_2022.py --turno 1     # ~1,2 GB de download
+    python scripts/baixar_boletins.py --turno 2
+    python scripts/baixar_boletins.py --turno 1              # ~1,2 GB de download
+    python scripts/baixar_boletins.py --ano 2026 --turno 2   # a noite de 25/10/2026
 """
 
 from __future__ import annotations
@@ -24,14 +26,15 @@ import duckdb
 import requests
 
 RAIZ = Path(__file__).resolve().parents[1]
-PACOTE = "https://dadosabertos.tse.jus.br/api/3/action/package_show?id=resultados-2022-boletim-de-urna"
+PACOTE = "https://dadosabertos.tse.jus.br/api/3/action/package_show?id=resultados-{ano}-boletim-de-urna"
 COLUNAS = ["SG_UF", "CD_MUNICIPIO", "NR_ZONA", "NR_SECAO", "QT_APTOS", "QT_COMPARECIMENTO",
            "NR_VOTAVEL", "QT_VOTOS", "DT_BU_RECEBIDO"]
+COLUNAS_SE_HOUVER = ["DT_ENCERRAMENTO"]   # hora em que a urna foi encerrada (existe em 2026)
 
 
-def urls(turno: int) -> dict[str, str]:
+def urls(ano: int, turno: int) -> dict[str, str]:
     """URL do zip de cada UF, lida do catálogo do Portal de Dados Abertos."""
-    recursos = requests.get(PACOTE, timeout=60).json()["result"]["resources"]
+    recursos = requests.get(PACOTE.format(ano=ano), timeout=60).json()["result"]["resources"]
     prefixo = f"bweb_{turno}t_"
     saida = {}
     for r in recursos:
@@ -80,7 +83,8 @@ def baixar_uf(url: str, destino: Path) -> None:
             membro = next(n for n in zf.namelist() if n.lower().endswith(".csv"))
             csv_tmp = Path(zf.extract(membro, tmp))
         zip_tmp.unlink()
-        colunas = ", ".join(COLUNAS)
+        cabecalho = csv_tmp.open(encoding="latin-1").readline()
+        colunas = ", ".join(COLUNAS + [c for c in COLUNAS_SE_HOUVER if f'"{c}"' in cabecalho])
         duckdb.sql(f"""
             copy (
                 select {colunas}
@@ -92,12 +96,13 @@ def baixar_uf(url: str, destino: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--ano", type=int, choices=[2022, 2026], default=2022)
     parser.add_argument("--turno", type=int, choices=[1, 2], default=2)
     args = parser.parse_args()
 
-    pasta = RAIZ / "dados" / "brutos" / f"bweb_2022_{args.turno}t"
+    pasta = RAIZ / "dados" / "brutos" / f"bweb_{args.ano}_{args.turno}t"
     pasta.mkdir(parents=True, exist_ok=True)
-    for uf, url in sorted(urls(args.turno).items()):
+    for uf, url in sorted(urls(args.ano, args.turno).items()):
         destino = pasta / f"{uf}.parquet"
         if destino.exists():
             continue

@@ -120,12 +120,19 @@ st.markdown(
     "declararam patrimônio zero."
 )
 
-titulo("Patrimônio mediano declarado por cargo: eleitos, no 2º turno e não eleitos (2026)",
-       "quanto mais longa a barra, maior o patrimônio típico do grupo. Laranja: eleitos; azul: não eleitos; "
-       "cinza: candidatos no 2º turno. Grupos com menos de "
-       f"{MINIMO} pessoas não têm barra (ex.: os 2 candidatos a Presidente no 2º turno).")
+# "No 2º turno" só existe entre os dois turnos; depois do 2º turno, todos são eleitos ou não eleitos
+GRUPOS = [g for g in ["Eleitos", "No 2º turno", "Não eleitos"] if g in set(por_cargo["grupo"])]
+if "No 2º turno" in GRUPOS:
+    titulo("Patrimônio mediano declarado por cargo: eleitos, no 2º turno e não eleitos (2026)",
+           "quanto mais longa a barra, maior o patrimônio típico do grupo. Laranja: eleitos; azul: não eleitos; "
+           "cinza: candidatos no 2º turno. Grupos com menos de "
+           f"{MINIMO} pessoas não têm barra (ex.: os 2 candidatos a Presidente no 2º turno).")
+else:
+    titulo("Patrimônio mediano declarado por cargo: eleitos e não eleitos (2026)",
+           "quanto mais longa a barra, maior o patrimônio típico do grupo. Laranja: eleitos; azul: não eleitos. "
+           f"Grupos com menos de {MINIMO} pessoas não têm barra (ex.: o Presidente eleito).")
 fig = go.Figure()
-for grupo in ["Eleitos", "No 2º turno", "Não eleitos"]:
+for grupo in GRUPOS:
     g = por_cargo[por_cargo["grupo"] == grupo].set_index("cargo").reindex(ORDEM_CARGOS)
     fig.add_bar(y=[quebra(c) for c in ORDEM_CARGOS], x=g["mediana"] / 1e3, orientation="h", name=grupo,
                 marker_color=COR_GRUPO[grupo], text=rotulo_zero(g["mediana"]), textposition="outside",
@@ -138,7 +145,7 @@ eixo_categorias(fig)
 t = por_cargo.pivot_table(index="cargo", columns="grupo", values=["mediana", "n", "zero"]).reindex(
     ORDEM_CARGOS + ["Todos os cargos"])
 tabela = pd.DataFrame({"Cargo": t.index})
-for grupo in ["Todos", "Eleitos", "No 2º turno", "Não eleitos"]:
+for grupo in ["Todos"] + GRUPOS:
     tabela[f"Mediana: {grupo.lower()}"] = [reais(v) if pd.notna(n) and n >= MINIMO else "—"
                                           for v, n in zip(t[("mediana", grupo)], t[("n", grupo)])]
 tabela["Candidatos"] = [comum.numero(v) for v in t[("n", "Todos")]]
